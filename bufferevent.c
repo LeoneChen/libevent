@@ -33,7 +33,7 @@
 #include <sys/time.h>
 #endif
 
-#include <errno.h>
+#include <sgx_errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,7 +44,7 @@
 #ifdef WIN32
 #include <winsock2.h>
 #endif
-#include <errno.h>
+#include <sgx_errno.h>
 
 #include "event2/util.h"
 #include "event2/buffer.h"

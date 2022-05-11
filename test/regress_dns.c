@@ -56,7 +56,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <errno.h>
+#include <sgx_errno.h>
 
 #include "event2/dns.h"
 #include "event2/dns_compat.h"
@@ -180,7 +180,7 @@ static void
 dns_gethostbyaddr(void)
 {
 	struct in_addr in;
-	in.s_addr = htonl(0x7f000001ul); /* 127.0.0.1 */
+	in.s_addr = sgx_htonl(0x7f000001ul); /* 127.0.0.1 */
 	dns_ok = 0;
 	evdns_resolve_reverse(&in, 0, dns_gethostbyname_cb, NULL);
 	event_dispatch();
@@ -201,7 +201,7 @@ dns_resolve_reverse(void *ptr)
 
 	tt_assert(base);
 	tt_assert(dns);
-	in.s_addr = htonl(0x7f000001ul); /* 127.0.0.1 */
+	in.s_addr = sgx_htonl(0x7f000001ul); /* 127.0.0.1 */
 	dns_ok = 0;
 
 	req = evdns_base_resolve_reverse(
@@ -236,7 +236,7 @@ dns_server_request_cb(struct evdns_server_request *req, void *data)
 		const char *qname = req->questions[i]->name;
 
 		struct in_addr ans;
-		ans.s_addr = htonl(0xc0a80b0bUL); /* 192.168.11.11 */
+		ans.s_addr = sgx_htonl(0xc0a80b0bUL); /* 192.168.11.11 */
 		if (qtype == EVDNS_TYPE_A &&
 		    qclass == EVDNS_CLASS_INET &&
 		    !evutil_ascii_strcasecmp(qname, "zz.example.com")) {
@@ -311,7 +311,7 @@ dns_server_gethostbyname_cb(int result, char type, int count, int ttl,
 	switch (type) {
 	case DNS_IPv4_A: {
 		struct in_addr *in_addrs = addresses;
-		if (in_addrs[0].s_addr != htonl(0xc0a80b0bUL) || ttl != 12345) {
+		if (in_addrs[0].s_addr != sgx_htonl(0xc0a80b0bUL) || ttl != 12345) {
 			printf("Bad IPv4 response \"%s\" %d. ",
 					inet_ntoa(in_addrs[0]), ttl);
 			dns_ok = 0;
@@ -382,7 +382,7 @@ dns_server(void)
 	base = evdns_base_new(NULL, 0);
 
 	/* Now configure a nameserver port. */
-	sock = socket(AF_INET, SOCK_DGRAM, 0);
+	sock = sgx_socket(AF_INET, SOCK_DGRAM, 0);
 	if (sock<0) {
 		tt_abort_perror("socket");
 	}
@@ -392,12 +392,12 @@ dns_server(void)
 	memset(&my_addr, 0, sizeof(my_addr));
 	my_addr.sin_family = AF_INET;
 	my_addr.sin_port = 0; /* kernel picks */
-	my_addr.sin_addr.s_addr = htonl(0x7f000001UL);
-	if (bind(sock, (struct sockaddr*)&my_addr, sizeof(my_addr)) < 0) {
+	my_addr.sin_addr.s_addr = sgx_htonl(0x7f000001UL);
+	if (sgx_bind(sock, (struct sockaddr*)&my_addr, sizeof(my_addr)) < 0) {
 		tt_abort_perror("bind");
 	}
 	slen = sizeof(ss);
-	if (getsockname(sock, (struct sockaddr*)&ss, &slen) < 0) {
+	if (sgx_getsockname(sock, (struct sockaddr*)&ss, &slen) < 0) {
 		tt_abort_perror("getsockname");
 	}
 
@@ -413,7 +413,7 @@ dns_server(void)
 					   dns_server_gethostbyname_cb, NULL);
 	evdns_base_resolve_ipv6(base, "zz.example.com", DNS_QUERY_NO_SEARCH,
 					   dns_server_gethostbyname_cb, NULL);
-	resolve_addr.s_addr = htonl(0xc0a80b0bUL); /* 192.168.11.11 */
+	resolve_addr.s_addr = sgx_htonl(0xc0a80b0bUL); /* 192.168.11.11 */
 	evdns_base_resolve_reverse(base, &resolve_addr, 0,
 	    dns_server_gethostbyname_cb, NULL);
 	memcpy(resolve_addr6.s6_addr,
@@ -542,10 +542,10 @@ dns_search_test(void *arg)
 
 	tt_int_op(r[0].type, ==, DNS_IPv4_A);
 	tt_int_op(r[0].count, ==, 1);
-	tt_int_op(((ev_uint32_t*)r[0].addrs)[0], ==, htonl(0x0b16212c));
+	tt_int_op(((ev_uint32_t*)r[0].addrs)[0], ==, sgx_htonl(0x0b16212c));
 	tt_int_op(r[1].type, ==, DNS_IPv4_A);
 	tt_int_op(r[1].count, ==, 1);
-	tt_int_op(((ev_uint32_t*)r[1].addrs)[0], ==, htonl(0xc8640064));
+	tt_int_op(((ev_uint32_t*)r[1].addrs)[0], ==, sgx_htonl(0xc8640064));
 	tt_int_op(r[2].result, ==, DNS_ERR_NOTEXIST);
 	tt_int_op(r[3].result, ==, DNS_ERR_NOTEXIST);
 	tt_int_op(r[4].result, ==, DNS_ERR_NOTEXIST);
@@ -700,7 +700,7 @@ dns_retry_test(void *arg)
 
 	tt_int_op(r1.type, ==, DNS_IPv4_A);
 	tt_int_op(r1.count, ==, 1);
-	tt_int_op(((ev_uint32_t*)r1.addrs)[0], ==, htonl(0x10204080));
+	tt_int_op(((ev_uint32_t*)r1.addrs)[0], ==, sgx_htonl(0x10204080));
 
 	/* Now try again, but this time have the server get treated as
 	 * failed, so we can send it a test probe. */
@@ -729,7 +729,7 @@ dns_retry_test(void *arg)
 	tt_int_op(r1.result, ==, DNS_ERR_NONE);
 	tt_int_op(r1.type, ==, DNS_IPv4_A);
 	tt_int_op(r1.count, ==, 1);
-	tt_int_op(((ev_uint32_t*)r1.addrs)[0], ==, htonl(0x10204080));
+	tt_int_op(((ev_uint32_t*)r1.addrs)[0], ==, sgx_htonl(0x10204080));
 
 end:
 	if (dns)
@@ -793,7 +793,7 @@ dns_reissue_test(void *arg)
 	tt_int_op(r1.result, ==, DNS_ERR_NONE);
 	tt_int_op(r1.type, ==, DNS_IPv4_A);
 	tt_int_op(r1.count, ==, 1);
-	tt_int_op(((ev_uint32_t*)r1.addrs)[0], ==, htonl(0xf00ff00f));
+	tt_int_op(((ev_uint32_t*)r1.addrs)[0], ==, sgx_htonl(0xf00ff00f));
 
 	/* Make sure we dropped at least once. */
 	tt_int_op(internal_error_table[0].seen, >, 0);
@@ -850,7 +850,7 @@ dns_inflight_test(void *arg)
 	for (i=0;i<20;++i) {
 		tt_int_op(r[i].type, ==, DNS_IPv4_A);
 		tt_int_op(r[i].count, ==, 1);
-		tt_int_op(((ev_uint32_t*)r[i].addrs)[0], ==, htonl(0xf00ff00f));
+		tt_int_op(((ev_uint32_t*)r[i].addrs)[0], ==, sgx_htonl(0xf00ff00f));
 	}
 
 end:
@@ -886,7 +886,7 @@ be_getaddrinfo_server_cb(struct evdns_server_request *req, void *data)
 		if (qtype == EVDNS_TYPE_A &&
 		    qclass == EVDNS_CLASS_INET &&
 		    !evutil_ascii_strcasecmp(qname, "nobodaddy.example.com")) {
-			ans.s_addr = htonl(0x7f000001);
+			ans.s_addr = sgx_htonl(0x7f000001);
 			evdns_server_request_add_a_reply(req, qname,
 			    1, &ans.s_addr, 2000);
 			added_any = 1;
@@ -896,7 +896,7 @@ be_getaddrinfo_server_cb(struct evdns_server_request *req, void *data)
 		} else if (!evutil_ascii_strcasecmp(qname,
 			"both.example.com")) {
 			if (qtype == EVDNS_TYPE_A) {
-				ans.s_addr = htonl(0x50502020);
+				ans.s_addr = sgx_htonl(0x50502020);
 				evdns_server_request_add_a_reply(req, qname,
 				    1, &ans.s_addr, 2000);
 				added_any = 1;
@@ -915,7 +915,7 @@ be_getaddrinfo_server_cb(struct evdns_server_request *req, void *data)
 			"v4only.example.com") ||
 		    !evutil_ascii_strcasecmp(qname, "v4assert.example.com")) {
 			if (qtype == EVDNS_TYPE_A) {
-				ans.s_addr = htonl(0x12345678);
+				ans.s_addr = sgx_htonl(0x12345678);
 				evdns_server_request_add_a_reply(req, qname,
 				    1, &ans.s_addr, 2000);
 				added_any = 1;
@@ -941,7 +941,7 @@ be_getaddrinfo_server_cb(struct evdns_server_request *req, void *data)
 		} else if (!evutil_ascii_strcasecmp(qname,
 			"v6timeout.example.com")) {
 			if (qtype == EVDNS_TYPE_A) {
-				ans.s_addr = htonl(0xabcdef01);
+				ans.s_addr = sgx_htonl(0xabcdef01);
 				evdns_server_request_add_a_reply(req, qname,
 				    1, &ans.s_addr, 2000);
 				added_any = 1;
@@ -1059,7 +1059,7 @@ test_bufferevent_connect_hostname(void *arg)
 	/* Bind an address and figure out what port it's on. */
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
-	sin.sin_addr.s_addr = htonl(0x7f000001); /* 127.0.0.1 */
+	sin.sin_addr.s_addr = sgx_htonl(0x7f000001); /* 127.0.0.1 */
 	sin.sin_port = 0;
 	listener = evconnlistener_new_bind(data->base, nil_accept_cb,
 	    &n_accept,
@@ -1786,12 +1786,12 @@ test_getaddrinfo_async_cancel_stress(void *ptr)
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
 	sin.sin_port = 0;
-	sin.sin_addr.s_addr = htonl(0x7f000001);
-	if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
+	sin.sin_addr.s_addr = sgx_htonl(0x7f000001);
+	if ((fd = sgx_socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
 		tt_abort_perror("socket");
 	}
 	evutil_make_socket_nonblocking(fd);
-	if (bind(fd, (struct sockaddr*)&sin, sizeof(sin))<0) {
+	if (sgx_bind(fd, (struct sockaddr*)&sin, sizeof(sin))<0) {
 		tt_abort_perror("bind");
 	}
 	server = evdns_add_server_port_with_base(base, fd, 0, gaic_server_cb,
@@ -1799,7 +1799,7 @@ test_getaddrinfo_async_cancel_stress(void *ptr)
 
 	memset(&ss, 0, sizeof(ss));
 	slen = sizeof(ss);
-	if (getsockname(fd, (struct sockaddr*)&ss, &slen)<0) {
+	if (sgx_getsockname(fd, (struct sockaddr*)&ss, &slen)<0) {
 		tt_abort_perror("getsockname");
 	}
 	evdns_base_nameserver_sockaddr_add(dns_base,

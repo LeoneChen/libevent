@@ -51,7 +51,7 @@
 #ifdef _EVENT_HAVE_STDLIB_H
 #include <stdlib.h>
 #endif
-#include <errno.h>
+#include <sgx_errno.h>
 #include <limits.h>
 #include <stdio.h>
 #include <string.h>
@@ -82,11 +82,21 @@
 #ifdef WIN32
 #define open _open
 #define read _read
-#define close _close
+#define close sgx_close
 #define fstat _fstati64
 #define stat _stati64
 #define mode_t int
 #endif
+
+struct protoent {
+	char *p_name;
+	char **p_aliases;
+	int p_proto;
+};
+
+#define read	sgx_read
+#define open	sgx_open
+#define setsockopt	sgx_setsockopt
 
 int
 evutil_open_closeonexec(const char *pathname, int flags, unsigned mode)
@@ -98,14 +108,14 @@ evutil_open_closeonexec(const char *pathname, int flags, unsigned mode)
 #endif
 
 	if (flags & O_CREAT)
-		fd = open(pathname, flags, (mode_t)mode);
+		fd = real_sgx_open(pathname, strlen(pathname), flags, (mode_t)mode);
 	else
-		fd = open(pathname, flags);
+		fd = real_sgx_open(pathname, strlen(pathname), flags, 0);
 	if (fd < 0)
 		return -1;
 
 #if !defined(O_CLOEXEC) && defined(FD_CLOEXEC)
-	if (fcntl(fd, F_SETFD, FD_CLOEXEC) < 0)
+	if (real_sgx_fcntl(fd, F_SETFD, FD_CLOEXEC) < 0)
 		return -1;
 #endif
 
@@ -145,14 +155,14 @@ evutil_read_file(const char *filename, char **content_out, size_t *len_out,
 	fd = evutil_open_closeonexec(filename, mode, 0);
 	if (fd < 0)
 		return -1;
-	if (fstat(fd, &st) || st.st_size < 0 ||
+	if (sgx_fstat(fd, &st, sizeof(struct stat)) || st.st_size < 0 ||
 	    st.st_size > EV_SSIZE_MAX-1 ) {
-		close(fd);
+		sgx_close(fd);
 		return -2;
 	}
 	mem = mm_malloc((size_t)st.st_size + 1);
 	if (!mem) {
-		close(fd);
+		sgx_close(fd);
 		return -2;
 	}
 	read_so_far = 0;
@@ -161,13 +171,13 @@ evutil_read_file(const char *filename, char **content_out, size_t *len_out,
 #else
 #define N_TO_READ(x) (x)
 #endif
-	while ((r = read(fd, mem+read_so_far, N_TO_READ(st.st_size - read_so_far))) > 0) {
+	while ((r = sgx_read(fd, mem+read_so_far, N_TO_READ(st.st_size - read_so_far))) > 0) {
 		read_so_far += r;
 		if (read_so_far >= (size_t)st.st_size)
 			break;
 		EVUTIL_ASSERT(read_so_far < (size_t)st.st_size);
 	}
-	close(fd);
+	sgx_close(fd);
 	if (r < 0) {
 		mm_free(mem);
 		return -2;
@@ -183,7 +193,7 @@ int
 evutil_socketpair(int family, int type, int protocol, evutil_socket_t fd[2])
 {
 #ifndef WIN32
-	return socketpair(family, type, protocol, fd);
+	return sgx_socketpair(family, type, protocol, fd);
 #else
 	return evutil_ersatz_socketpair(family, type, protocol, fd);
 #endif
@@ -227,41 +237,41 @@ evutil_ersatz_socketpair(int family, int type, int protocol,
 		return -1;
 	}
 
-	listener = socket(AF_INET, type, 0);
+	listener = sgx_socket(AF_INET, type, 0);
 	if (listener < 0)
 		return -1;
 	memset(&listen_addr, 0, sizeof(listen_addr));
 	listen_addr.sin_family = AF_INET;
-	listen_addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	listen_addr.sin_addr.s_addr = sgx_htonl(INADDR_LOOPBACK);
 	listen_addr.sin_port = 0;	/* kernel chooses port.	 */
-	if (bind(listener, (struct sockaddr *) &listen_addr, sizeof (listen_addr))
+	if (sgx_bind(listener, (struct sockaddr *) &listen_addr, sizeof (listen_addr))
 		== -1)
 		goto tidy_up_and_fail;
-	if (listen(listener, 1) == -1)
+	if (sgx_listen(listener, 1) == -1)
 		goto tidy_up_and_fail;
 
-	connector = socket(AF_INET, type, 0);
+	connector = sgx_socket(AF_INET, type, 0);
 	if (connector < 0)
 		goto tidy_up_and_fail;
 	/* We want to find out the port number to connect to.  */
 	size = sizeof(connect_addr);
-	if (getsockname(listener, (struct sockaddr *) &connect_addr, &size) == -1)
+	if (sgx_getsockname(listener, (struct sockaddr *) &connect_addr, &size) == -1)
 		goto tidy_up_and_fail;
 	if (size != sizeof (connect_addr))
 		goto abort_tidy_up_and_fail;
-	if (connect(connector, (struct sockaddr *) &connect_addr,
+	if (sgx_connect(connector, (struct sockaddr *) &connect_addr,
 				sizeof(connect_addr)) == -1)
 		goto tidy_up_and_fail;
 
 	size = sizeof(listen_addr);
-	acceptor = accept(listener, (struct sockaddr *) &listen_addr, &size);
+	acceptor = sgx_accept(listener, (struct sockaddr *) &listen_addr, &size);
 	if (acceptor < 0)
 		goto tidy_up_and_fail;
 	if (size != sizeof(listen_addr))
 		goto abort_tidy_up_and_fail;
 	/* Now check we are talking to ourself by matching port and host on the
 	   two sockets.	 */
-	if (getsockname(connector, (struct sockaddr *) &connect_addr, &size) == -1)
+	if (sgx_getsockname(connector, (struct sockaddr *) &connect_addr, &size) == -1)
 		goto tidy_up_and_fail;
 	if (size != sizeof (connect_addr)
 		|| listen_addr.sin_family != connect_addr.sin_family
@@ -297,7 +307,7 @@ evutil_make_socket_nonblocking(evutil_socket_t fd)
 #ifdef WIN32
 	{
 		u_long nonblocking = 1;
-		if (ioctlsocket(fd, FIONBIO, &nonblocking) == SOCKET_ERROR) {
+		if (sgx_ioctlsocket(fd, FIONBIO, &nonblocking) == SOCKET_ERROR) {
 			event_sock_warn(fd, "fcntl(%d, F_GETFL)", (int)fd);
 			return -1;
 		}
@@ -305,11 +315,11 @@ evutil_make_socket_nonblocking(evutil_socket_t fd)
 #else
 	{
 		int flags;
-		if ((flags = fcntl(fd, F_GETFL, NULL)) < 0) {
+		if ((flags = real_sgx_fcntl2(fd, F_GETFL, NULL)) < 0) {
 			event_warn("fcntl(%d, F_GETFL)", fd);
 			return -1;
 		}
-		if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+		if (real_sgx_fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
 			event_warn("fcntl(%d, F_SETFL)", fd);
 			return -1;
 		}
@@ -338,11 +348,11 @@ evutil_make_socket_closeonexec(evutil_socket_t fd)
 {
 #if !defined(WIN32) && defined(_EVENT_HAVE_SETFD)
 	int flags;
-	if ((flags = fcntl(fd, F_GETFD, NULL)) < 0) {
+	if ((flags = real_sgx_fcntl2(fd, F_GETFD, NULL)) < 0) {
 		event_warn("fcntl(%d, F_GETFD)", fd);
 		return -1;
 	}
-	if (fcntl(fd, F_SETFD, flags | FD_CLOEXEC) == -1) {
+	if (real_sgx_fcntl(fd, F_SETFD, flags | FD_CLOEXEC) == -1) {
 		event_warn("fcntl(%d, F_SETFD)", fd);
 		return -1;
 	}
@@ -354,9 +364,9 @@ int
 evutil_closesocket(evutil_socket_t sock)
 {
 #ifndef WIN32
-	return close(sock);
+	return sgx_close(sock);
 #else
-	return closesocket(sock);
+	return sgx_closesocket(sock);
 #endif
 }
 
@@ -383,8 +393,6 @@ evutil_strtoll(const char *s, char **endptr, int base)
 	if (endptr)
 		*endptr = (char*) s;
 	return r;
-#elif defined(WIN32)
-	return (ev_int64_t) _strtoi64(s, endptr, base);
 #elif defined(_EVENT_SIZEOF_LONG_LONG) && _EVENT_SIZEOF_LONG_LONG == 8
 	long long r;
 	int n;
@@ -438,7 +446,7 @@ evutil_gettimeofday(struct timeval *tv, struct timezone *tz)
 	 * Either way, I think this value might be skewed to ignore the
 	 * timezone, and just return local time.  That's not so good.
 	 */
-	_ftime(&tb);
+	sgx_ftime(&tb,sizeof(struct _timeb));
 	tv->tv_sec = (long) tb.time;
 	tv->tv_usec = ((int) tb.millitm) * 1000;
 	return 0;
@@ -450,9 +458,9 @@ int
 evutil_socket_geterror(evutil_socket_t sock)
 {
 	int optval, optvallen=sizeof(optval);
-	int err = WSAGetLastError();
+	int err = sgx_WSAGetLastError();
 	if (err == WSAEWOULDBLOCK && sock >= 0) {
-		if (getsockopt(sock, SOL_SOCKET, SO_ERROR, (void*)&optval,
+		if (sgx_getsockopt(sock, SOL_SOCKET, SO_ERROR, (void*)&optval,
 					   &optvallen))
 			return err;
 		if (optval)
@@ -470,7 +478,7 @@ evutil_socket_connect(evutil_socket_t *fd_ptr, struct sockaddr *sa, int socklen)
 	int made_fd = 0;
 
 	if (*fd_ptr < 0) {
-		if ((*fd_ptr = socket(sa->sa_family, SOCK_STREAM, 0)) < 0)
+		if ((*fd_ptr = sgx_socket(sa->sa_family, SOCK_STREAM, 0)) < 0)
 			goto err;
 		made_fd = 1;
 		if (evutil_make_socket_nonblocking(*fd_ptr) < 0) {
@@ -478,7 +486,7 @@ evutil_socket_connect(evutil_socket_t *fd_ptr, struct sockaddr *sa, int socklen)
 		}
 	}
 
-	if (connect(*fd_ptr, sa, socklen) < 0) {
+	if (sgx_connect(*fd_ptr, sa, socklen) < 0) {
 		int e = evutil_socket_geterror(*fd_ptr);
 		if (EVUTIL_ERR_CONNECT_RETRIABLE(e))
 			return 0;
@@ -507,7 +515,7 @@ evutil_socket_finished_connecting(evutil_socket_t fd)
 	int e;
 	ev_socklen_t elen = sizeof(e);
 
-	if (getsockopt(fd, SOL_SOCKET, SO_ERROR, (void*)&e, &elen) < 0)
+	if (sgx_getsockopt(fd, SOL_SOCKET, SO_ERROR, (void*)&e, &elen) < 0)
 		return -1;
 
 	if (e) {
@@ -569,13 +577,13 @@ evutil_check_interfaces(int force_recheck)
 	 * interface. */
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
-	sin.sin_port = htons(53);
+	sin.sin_port = sgx_htons(53);
 	r = evutil_inet_pton(AF_INET, "18.244.0.188", &sin.sin_addr);
 	EVUTIL_ASSERT(r);
 
 	memset(&sin6, 0, sizeof(sin6));
 	sin6.sin6_family = AF_INET6;
-	sin6.sin6_port = htons(53);
+	sin6.sin6_port = sgx_htons(53);
 	r = evutil_inet_pton(AF_INET6, "2001:4860:b002::68", &sin6.sin6_addr);
 	EVUTIL_ASSERT(r);
 
@@ -583,11 +591,11 @@ evutil_check_interfaces(int force_recheck)
 	memset(&sin6_out, 0, sizeof(sin6_out));
 
 	/* XXX some errnos mean 'no address'; some mean 'not enough sockets'. */
-	if ((fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) >= 0 &&
-	    connect(fd, (struct sockaddr*)&sin, sizeof(sin)) == 0 &&
-	    getsockname(fd, (struct sockaddr*)&sin_out, &sin_out_len) == 0) {
+	if ((fd = sgx_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) >= 0 &&
+	    sgx_connect(fd, (struct sockaddr*)&sin, sizeof(sin)) == 0 &&
+	    sgx_getsockname(fd, (struct sockaddr*)&sin_out, &sin_out_len) == 0) {
 		/* We might have an IPv4 interface. */
-		ev_uint32_t addr = ntohl(sin_out.sin_addr.s_addr);
+		ev_uint32_t addr = sgx_ntohl(sin_out.sin_addr.s_addr);
 		if (addr == 0 ||
 		    EVUTIL_V4ADDR_IS_LOCALHOST(addr) ||
 		    EVUTIL_V4ADDR_IS_CLASSD(addr)) {
@@ -606,9 +614,9 @@ evutil_check_interfaces(int force_recheck)
 	if (fd >= 0)
 		evutil_closesocket(fd);
 
-	if ((fd = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP)) >= 0 &&
-	    connect(fd, (struct sockaddr*)&sin6, sizeof(sin6)) == 0 &&
-	    getsockname(fd, (struct sockaddr*)&sin6_out, &sin6_out_len) == 0) {
+	if ((fd = sgx_socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP)) >= 0 &&
+	    sgx_connect(fd, (struct sockaddr*)&sin6, sizeof(sin6)) == 0 &&
+	    sgx_getsockname(fd, (struct sockaddr*)&sin6_out, &sin6_out_len) == 0) {
 		/* We might have an IPv6 interface. */
 		const unsigned char *addr =
 		    (unsigned char*)sin6_out.sin6_addr.s6_addr;
@@ -727,9 +735,10 @@ evutil_parse_servname(const char *servname, const char *protocol,
 		return n;
 #if defined(_EVENT_HAVE_GETSERVBYNAME) || defined(WIN32)
 	if (!(hints->ai_flags & EVUTIL_AI_NUMERICSERV)) {
-		struct servent *ent = getservbyname(servname, protocol);
+		struct servent *ent = (struct servent *)malloc(sizeof(struct servent));
+		sgx_getservbyname(servname, strlen(servname), protocol, strlen(protocol), ent, sizeof(struct servent));
 		if (ent) {
-			return ntohs(ent->s_port);
+			return sgx_ntohs(ent->s_port);
 		}
 	}
 #endif
@@ -755,9 +764,12 @@ evutil_unparse_protoname(int proto)
 	default:
 #ifdef _EVENT_HAVE_GETPROTOBYNUMBER
 		{
-			struct protoent *ent = getprotobynumber(proto);
+			char *proto_name;
+			struct protoent *ent = (struct protoent *)malloc(sizeof(struct protoent));
+			proto_name = (char *)malloc(sizeof(10));
+			sgx_getprotobynumber(proto, ent, sizeof(struct protoent), proto_name, 10);
 			if (ent)
-				return ent->p_name;
+				return (const char *)proto_name;
 		}
 #endif
 		return NULL;
@@ -841,7 +853,7 @@ evutil_getaddrinfo_common(const char *nodename, const char *servname,
 			struct sockaddr_in6 sin6;
 			memset(&sin6, 0, sizeof(sin6));
 			sin6.sin6_family = AF_INET6;
-			sin6.sin6_port = htons(port);
+			sin6.sin6_port = sgx_htons(port);
 			if (hints->ai_flags & EVUTIL_AI_PASSIVE) {
 				/* Bind to :: */
 			} else {
@@ -858,12 +870,12 @@ evutil_getaddrinfo_common(const char *nodename, const char *servname,
 			struct sockaddr_in sin;
 			memset(&sin, 0, sizeof(sin));
 			sin.sin_family = AF_INET;
-			sin.sin_port = htons(port);
+			sin.sin_port = sgx_htons(port);
 			if (hints->ai_flags & EVUTIL_AI_PASSIVE) {
 				/* Bind to 0.0.0.0 */
 			} else {
 				/* connect to 127.0.0.1 */
-				sin.sin_addr.s_addr = htonl(0x7f000001);
+				sin.sin_addr.s_addr = sgx_htonl(0x7f000001);
 			}
 			res4 = evutil_new_addrinfo((struct sockaddr*)&sin,
 			    sizeof(sin), hints);
@@ -886,7 +898,7 @@ evutil_getaddrinfo_common(const char *nodename, const char *servname,
 		if (1==evutil_inet_pton(AF_INET6, nodename, &sin6.sin6_addr)) {
 			/* Got an ipv6 address. */
 			sin6.sin6_family = AF_INET6;
-			sin6.sin6_port = htons(port);
+			sin6.sin6_port = sgx_htons(port);
 			*res = evutil_new_addrinfo((struct sockaddr*)&sin6,
 			    sizeof(sin6), hints);
 			if (!*res)
@@ -902,7 +914,7 @@ evutil_getaddrinfo_common(const char *nodename, const char *servname,
 		if (1==evutil_inet_pton(AF_INET, nodename, &sin.sin_addr)) {
 			/* Got an ipv6 address. */
 			sin.sin_family = AF_INET;
-			sin.sin_port = htons(port);
+			sin.sin_port = sgx_htons(port);
 			*res = evutil_new_addrinfo((struct sockaddr*)&sin,
 			    sizeof(sin), hints);
 			if (!*res)
@@ -997,7 +1009,7 @@ addrinfo_from_hostent(const struct hostent *ent,
 	if (ent->h_addrtype == PF_INET) {
 		memset(&sin, 0, sizeof(sin));
 		sin.sin_family = AF_INET;
-		sin.sin_port = htons(port);
+		sin.sin_port = sgx_htons(port);
 		sa = (struct sockaddr *)&sin;
 		socklen = sizeof(struct sockaddr_in);
 		addrp = &sin.sin_addr;
@@ -1008,7 +1020,7 @@ addrinfo_from_hostent(const struct hostent *ent,
 	} else if (ent->h_addrtype == PF_INET6) {
 		memset(&sin6, 0, sizeof(sin6));
 		sin6.sin6_family = AF_INET6;
-		sin6.sin6_port = htons(port);
+		sin6.sin6_port = sgx_htons(port);
 		sa = (struct sockaddr *)&sin6;
 		socklen = sizeof(struct sockaddr_in);
 		addrp = &sin6.sin6_addr;
@@ -1102,9 +1114,9 @@ test_for_getaddrinfo_hacks(void)
 	    AI_NUMERICSERV |
 #endif
 	    0;
-	r = getaddrinfo("1.2.3.4", "80", &hints, &ai);
+	r = sgx_getaddrinfo("1.2.3.4", "80", &hints, &ai);
 	hints.ai_socktype = SOCK_STREAM;
-	r2 = getaddrinfo("1.2.3.4", "80", &hints, &ai2);
+	r2 = sgx_getaddrinfo("1.2.3.4", "80", &hints, &ai2);
 	if (r2 == 0 && r != 0) {
 		need_numeric_port_hack_=1;
 	}
@@ -1113,9 +1125,9 @@ test_for_getaddrinfo_hacks(void)
 	}
 
 	if (ai)
-		freeaddrinfo(ai);
+		sgx_freeaddrinfo(ai, sizeof(evutil_addrinfo));
 	if (ai2)
-		freeaddrinfo(ai2);
+		sgx_freeaddrinfo(ai2, sizeof(evutil_addrinfo));
 	tested_for_getaddrinfo_hacks=1;
 }
 
@@ -1144,17 +1156,17 @@ apply_numeric_port_hack(int port, struct evutil_addrinfo **ai)
 		struct sockaddr *sa = (*ai)->ai_addr;
 		if (sa && sa->sa_family == AF_INET) {
 			struct sockaddr_in *sin = (struct sockaddr_in*)sa;
-			sin->sin_port = htons(port);
+			sin->sin_port = sgx_htons(port);
 		} else if (sa && sa->sa_family == AF_INET6) {
 			struct sockaddr_in6 *sin6 = (struct sockaddr_in6*)sa;
-			sin6->sin6_port = htons(port);
+			sin6->sin6_port = sgx_htons(port);
 		} else {
 			/* A numeric port makes no sense here; remove this one
 			 * from the list. */
 			struct evutil_addrinfo *victim = *ai;
 			*ai = victim->ai_next;
 			victim->ai_next = NULL;
-			freeaddrinfo(victim);
+			sgx_freeaddrinfo(victim, sizeof(evutil_addrinfo));
 		}
 	}
 }
@@ -1265,7 +1277,7 @@ evutil_getaddrinfo(const char *nodename, const char *servname,
 	/* Clear any flags that only libevent understands. */
 	hints.ai_flags &= ~ALL_NONNATIVE_AI_FLAGS;
 
-	err = getaddrinfo(nodename, servname, &hints, res);
+	err = sgx_getaddrinfo(nodename, servname, &hints, res);
 	if (need_np_hack)
 		apply_numeric_port_hack(portnum, res);
 
@@ -1321,9 +1333,9 @@ evutil_getaddrinfo(const char *nodename, const char *servname,
 #else
 		/* fall back to gethostbyname. */
 		/* XXXX This needs a lock everywhere but Windows. */
-		ent = gethostbyname(nodename);
+		ent = sgx_gethostbyname(nodename);
 #ifdef WIN32
-		err = WSAGetLastError();
+		err = sgx_WSAGetLastError();
 #else
 		err = h_errno;
 #endif
@@ -1379,7 +1391,7 @@ evutil_freeaddrinfo(struct evutil_addrinfo *ai)
 {
 #ifdef _EVENT_HAVE_GETADDRINFO
 	if (!(ai->ai_flags & EVUTIL_AI_LIBEVENT_ALLOCATED)) {
-		freeaddrinfo(ai);
+		sgx_freeaddrinfo(ai, sizeof(evutil_addrinfo));
 		return;
 	}
 #endif
@@ -1459,9 +1471,9 @@ evutil_gai_strerror(int err)
 		return "system error";
 	default:
 #if defined(USE_NATIVE_GETADDRINFO) && defined(WIN32)
-		return gai_strerrorA(err);
+	return "getaddrinfo error";
 #elif defined(USE_NATIVE_GETADDRINFO)
-		return gai_strerror(err);
+	return "getaddrinfo error";
 #else
 		return "Unknown error code";
 #endif
@@ -1563,9 +1575,9 @@ evutil_vsnprintf(char *buf, size_t buflen, const char *format, va_list ap)
 	if (!buflen)
 		return 0;
 #if defined(_MSC_VER) || defined(WIN32)
-	r = _vsnprintf(buf, buflen, format, ap);
+	r = sgx_vsnprintf(buf, buflen, format, ap);
 	if (r < 0)
-		r = _vscprintf(format, ap);
+		printf("TODO: vscprintf\n");
 #elif defined(sgi)
 	/* Make sure we always use the correct vsnprintf on IRIX */
 	extern int      _xpg5_vsnprintf(char * __restrict,
@@ -1574,7 +1586,7 @@ evutil_vsnprintf(char *buf, size_t buflen, const char *format, va_list ap)
 
 	r = _xpg5_vsnprintf(buf, buflen, format, ap);
 #else
-	r = vsnprintf(buf, buflen, format, ap);
+	r = sgx_vsnprintf(buf, buflen, format, ap);
 #endif
 	buf[buflen-1] = '\0';
 	return r;
@@ -1591,7 +1603,7 @@ evutil_inet_ntop(int af, const void *src, char *dst, size_t len)
 #else
 	if (af == AF_INET) {
 		const struct in_addr *in = src;
-		const ev_uint32_t a = ntohl(in->s_addr);
+		const ev_uint32_t a = sgx_ntohl(in->s_addr);
 		int r;
 		r = evutil_snprintf(dst, len, "%d.%d.%d.%d",
 		    (int)(ev_uint8_t)((a>>24)&0xff),
@@ -1695,7 +1707,7 @@ evutil_inet_pton(int af, const char *src, void *dst)
 		if (b < 0 || b > 255) return 0;
 		if (c < 0 || c > 255) return 0;
 		if (d < 0 || d > 255) return 0;
-		addr->s_addr = htonl((a<<24) | (b<<16) | (c<<8) | d);
+		addr->s_addr = sgx_htonl((a<<24) | (b<<16) | (c<<8) | d);
 		return 1;
 #ifdef AF_INET6
 	} else if (af == AF_INET6) {
@@ -1863,7 +1875,7 @@ evutil_parse_sockaddr_port(const char *ip_as_string, struct sockaddr *out, int *
 		sin6.sin6_len = sizeof(sin6);
 #endif
 		sin6.sin6_family = AF_INET6;
-		sin6.sin6_port = htons(port);
+		sin6.sin6_port = sgx_htons(port);
 		if (1 != evutil_inet_pton(AF_INET6, addr_part, &sin6.sin6_addr))
 			return -1;
 		if ((int)sizeof(sin6) > *outlen)
@@ -1882,7 +1894,7 @@ evutil_parse_sockaddr_port(const char *ip_as_string, struct sockaddr *out, int *
 		sin.sin_len = sizeof(sin);
 #endif
 		sin.sin_family = AF_INET;
-		sin.sin_port = htons(port);
+		sin.sin_port = sgx_htons(port);
 		if (1 != evutil_inet_pton(AF_INET, addr_part, &sin.sin_addr))
 			return -1;
 		if ((int)sizeof(sin) > *outlen)
@@ -1903,7 +1915,7 @@ evutil_format_sockaddr_port(const struct sockaddr *sa, char *out, size_t outlen)
 	if (sa->sa_family == AF_INET) {
 		const struct sockaddr_in *sin = (const struct sockaddr_in*)sa;
 		res = evutil_inet_ntop(AF_INET, &sin->sin_addr,b,sizeof(b));
-		port = ntohs(sin->sin_port);
+		port = sgx_ntohs(sin->sin_port);
 		if (res) {
 			evutil_snprintf(out, outlen, "%s:%d", b, port);
 			return out;
@@ -1911,7 +1923,7 @@ evutil_format_sockaddr_port(const struct sockaddr *sa, char *out, size_t outlen)
 	} else if (sa->sa_family == AF_INET6) {
 		const struct sockaddr_in6 *sin6 = (const struct sockaddr_in6*)sa;
 		res = evutil_inet_ntop(AF_INET6, &sin6->sin6_addr,b,sizeof(b));
-		port = ntohs(sin6->sin6_port);
+		port = sgx_ntohs(sin6->sin6_port);
 		if (res) {
 			evutil_snprintf(out, outlen, "[%s]:%d", b, port);
 			return out;
@@ -2093,6 +2105,8 @@ evutil_issetugid(void)
 const char *
 evutil_getenv(const char *varname)
 {
+	// SGX: LibEvent checks env in "evutil_getenv", but we will not support this.
+	return NULL;
 	if (evutil_issetugid())
 		return NULL;
 
@@ -2103,9 +2117,9 @@ long
 _evutil_weakrand(void)
 {
 #ifdef WIN32
-	return rand();
+	return sgx_rand();
 #else
-	return random();
+	return sgx_rand();
 #endif
 }
 
@@ -2128,7 +2142,7 @@ evutil_sockaddr_is_loopback(const struct sockaddr *addr)
 	    "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\1";
 	if (addr->sa_family == AF_INET) {
 		struct sockaddr_in *sin = (struct sockaddr_in *)addr;
-		return (ntohl(sin->sin_addr.s_addr) & 0xff000000) == 0x7f000000;
+		return (sgx_ntohl(sin->sin_addr.s_addr) & 0xff000000) == 0x7f000000;
 	} else if (addr->sa_family == AF_INET6) {
 		struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *)addr;
 		return !memcmp(sin6->sin6_addr.s6_addr, LOOPBACK_S6, 16);
@@ -2173,18 +2187,21 @@ evutil_hex_char_to_int(char c)
 	return -1;
 }
 
+
+// SGX: Application already loaded library
+/*
 #ifdef WIN32
 HANDLE
 evutil_load_windows_system_library(const TCHAR *library_name)
 {
   TCHAR path[MAX_PATH];
   unsigned n;
-  n = GetSystemDirectory(path, MAX_PATH);
+  n = sgx_GetSystemDirectory(path, MAX_PATH);
   if (n == 0 || n + _tcslen(library_name) + 2 >= MAX_PATH)
     return 0;
   _tcscat(path, TEXT("\\"));
   _tcscat(path, library_name);
-  return LoadLibrary(path);
+  return sgx_LoadLibrary(path);
 }
 #endif
-
+*/

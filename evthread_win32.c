@@ -165,7 +165,7 @@ evthread_win32_condvar_wait(void *_cond, void *_lock, const struct timeval *tv)
 		ms = INFINITE;
 	result = SleepConditionVariableCS_fn(cond, lock, ms);
 	if (result) {
-		if (GetLastError() == WAIT_TIMEOUT)
+		if (sgx_GetLastError() == WAIT_TIMEOUT)
 			return 1;
 		else
 			return -1;
@@ -208,7 +208,7 @@ evthread_win32_cond_free(void *_cond)
 {
 	struct evthread_win32_cond *cond = _cond;
 	DeleteCriticalSection(&cond->lock);
-	CloseHandle(cond->event);
+	sgx_CloseHandle(cond->event);
 	mm_free(cond);
 }
 

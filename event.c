@@ -49,7 +49,7 @@
 #include <sys/eventfd.h>
 #endif
 #include <ctype.h>
-#include <errno.h>
+#include <sgx_errno.h>
 #include <signal.h>
 #include <string.h>
 #include <time.h>
@@ -68,6 +68,27 @@
 #include "changelist-internal.h"
 #include "ht-internal.h"
 #include "util-internal.h"
+
+// For SGX-Tor
+#define	timerclear(tvp)		(tvp)->tv_sec = (tvp)->tv_usec = 0
+#define	timeradd(tvp, uvp, vvp)						\
+	do {								\
+		(vvp)->tv_sec = (tvp)->tv_sec + (uvp)->tv_sec;		\
+		(vvp)->tv_usec = (tvp)->tv_usec + (uvp)->tv_usec;	\
+		if ((vvp)->tv_usec >= 1000000) {			\
+			(vvp)->tv_sec++;				\
+			(vvp)->tv_usec -= 1000000;			\
+		}							\
+	} while (0)
+#define	timersub(tvp, uvp, vvp)						\
+	do {								\
+		(vvp)->tv_sec = (tvp)->tv_sec - (uvp)->tv_sec;		\
+		(vvp)->tv_usec = (tvp)->tv_usec - (uvp)->tv_usec;	\
+		if ((vvp)->tv_usec < 0) {				\
+			(vvp)->tv_sec--;				\
+			(vvp)->tv_usec += 1000000;			\
+		}							\
+	} while (0)
 
 #ifdef _EVENT_HAVE_EVENT_PORTS
 extern const struct eventop evportops;
@@ -337,7 +358,7 @@ detect_monotonic(void)
 	if (use_monotonic_initialized)
 		return;
 
-	if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0)
+	if (sgx_clock_gettime(CLOCK_MONOTONIC, &ts) == 0)
 		use_monotonic = 1;
 
 	use_monotonic_initialized = 1;
@@ -367,7 +388,7 @@ gettime(struct event_base *base, struct timeval *tp)
 	if (use_monotonic) {
 		struct timespec	ts;
 
-		if (clock_gettime(CLOCK_MONOTONIC, &ts) == -1)
+		if (sgx_clock_gettime(CLOCK_MONOTONIC, &ts) == -1)
 			return (-1);
 
 		tp->tv_sec = ts.tv_sec;
@@ -1999,9 +2020,9 @@ evthread_notify_base_default(struct event_base *base)
 	int r;
 	buf[0] = (char) 0;
 #ifdef WIN32
-	r = send(base->th_notify_fd[1], buf, 1, 0);
+	r = sgx_send(base->th_notify_fd[1], buf, 1, 0);
 #else
-	r = write(base->th_notify_fd[1], buf, 1);
+	r = sgx_write(base->th_notify_fd[1], buf, 1);
 #endif
 	return (r < 0 && errno != EAGAIN) ? -1 : 0;
 }
@@ -2015,7 +2036,7 @@ evthread_notify_base_eventfd(struct event_base *base)
 	ev_uint64_t msg = 1;
 	int r;
 	do {
-		r = write(base->th_notify_fd[0], (void*) &msg, sizeof(msg));
+		r = sgx_write(base->th_notify_fd[0], (void*) &msg, sizeof(msg));
 	} while (r < 0 && errno == EAGAIN);
 
 	return (r < 0) ? -1 : 0;
@@ -2735,7 +2756,7 @@ evthread_notify_drain_eventfd(evutil_socket_t fd, short what, void *arg)
 	ev_ssize_t r;
 	struct event_base *base = arg;
 
-	r = read(fd, (void*) &msg, sizeof(msg));
+	r = sgx_read(fd, (void*) &msg, sizeof(msg));
 	if (r<0 && errno != EAGAIN) {
 		event_sock_warn(fd, "Error reading from eventfd");
 	}
@@ -2751,10 +2772,10 @@ evthread_notify_drain_default(evutil_socket_t fd, short what, void *arg)
 	unsigned char buf[1024];
 	struct event_base *base = arg;
 #ifdef WIN32
-	while (recv(fd, (char*)buf, sizeof(buf), 0) > 0)
+	while (sgx_recv(fd, (char*)buf, sizeof(buf), 0) > 0)
 		;
 #else
-	while (read(fd, (char*)buf, sizeof(buf)) > 0)
+	while (sgx_read(fd, (char*)buf, sizeof(buf)) > 0)
 		;
 #endif
 
@@ -2780,7 +2801,8 @@ evthread_make_base_notifiable(struct event_base *base)
 #ifndef EFD_CLOEXEC
 #define EFD_CLOEXEC 0
 #endif
-	base->th_notify_fd[0] = eventfd(0, EFD_CLOEXEC);
+	printf("Here1\n");
+	base->th_notify_fd[0] = sgx_eventfd(0, EFD_CLOEXEC);
 	if (base->th_notify_fd[0] >= 0) {
 		evutil_make_socket_closeonexec(base->th_notify_fd[0]);
 		notify = evthread_notify_base_eventfd;
@@ -2790,7 +2812,7 @@ evthread_make_base_notifiable(struct event_base *base)
 #if defined(_EVENT_HAVE_PIPE)
 	if (base->th_notify_fd[0] < 0) {
 		if ((base->evsel->features & EV_FEATURE_FDS)) {
-			if (pipe(base->th_notify_fd) < 0) {
+			if (sgx_pipe(base->th_notify_fd) < 0) {
 				event_warn("%s: pipe", __func__);
 			} else {
 				evutil_make_socket_closeonexec(base->th_notify_fd[0]);
@@ -2811,6 +2833,7 @@ evthread_make_base_notifiable(struct event_base *base)
 			event_sock_warn(-1, "%s: socketpair", __func__);
 			return (-1);
 		} else {
+			printf("Here3\n");
 			evutil_make_socket_closeonexec(base->th_notify_fd[0]);
 			evutil_make_socket_closeonexec(base->th_notify_fd[1]);
 		}
@@ -2842,6 +2865,7 @@ evthread_make_base_notifiable(struct event_base *base)
 	return event_add(&base->th_notify, NULL);
 }
 
+/*
 void
 event_base_dump_events(struct event_base *base, FILE *output)
 {
@@ -2872,6 +2896,7 @@ event_base_dump_events(struct event_base *base, FILE *output)
 		}
 	}
 }
+*/
 
 void
 event_base_add_virtual(struct event_base *base)

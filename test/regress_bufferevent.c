@@ -54,7 +54,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <errno.h>
+#include <sgx_errno.h>
 #include <assert.h>
 
 #ifdef _EVENT_HAVE_ARPA_INET_H
@@ -505,7 +505,7 @@ test_bufferevent_connect(void *arg)
 	memset(&localhost, 0, sizeof(localhost));
 
 	localhost.sin_port = 0; /* pick-a-port */
-	localhost.sin_addr.s_addr = htonl(0x7f000001L);
+	localhost.sin_addr.s_addr = sgx_htonl(0x7f000001L);
 	localhost.sin_family = AF_INET;
 	sa = (struct sockaddr *)&localhost;
 	lev = evconnlistener_new_bind(data->base, listen_cb, data->base,
@@ -596,15 +596,15 @@ test_bufferevent_connect_fail(void *arg)
 
 	memset(&localhost, 0, sizeof(localhost));
 	localhost.sin_port = 0; /* have the kernel pick a port */
-	localhost.sin_addr.s_addr = htonl(0x7f000001L);
+	localhost.sin_addr.s_addr = sgx_htonl(0x7f000001L);
 	localhost.sin_family = AF_INET;
 
 	/* bind, but don't listen or accept. should trigger
 	   "Connection refused" reliably on most platforms. */
-	fake_listener = socket(localhost.sin_family, SOCK_STREAM, 0);
+	fake_listener = sgx_socket(localhost.sin_family, SOCK_STREAM, 0);
 	tt_assert(fake_listener >= 0);
-	tt_assert(bind(fake_listener, sa, slen) == 0);
-	tt_assert(getsockname(fake_listener, sa, &slen) == 0);
+	tt_assert(sgx_bind(fake_listener, sa, slen) == 0);
+	tt_assert(sgx_getsockname(fake_listener, sa, &slen) == 0);
 	bev = bufferevent_socket_new(data->base, -1,
 		BEV_OPT_CLOSE_ON_FREE | BEV_OPT_DEFER_CALLBACKS);
 	tt_assert(bev);

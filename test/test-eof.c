@@ -43,7 +43,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <errno.h>
+#include <sgx_errno.h>
 
 #include <event.h>
 #include <evutil.h>
@@ -64,10 +64,10 @@ read_cb(evutil_socket_t fd, short event, void *arg)
 
 	if (EV_TIMEOUT & event) {
 		printf("%s: Timeout!\n", __func__);
-		exit(1);
+		sgx_exit(1);
 	}
 
-	len = recv(fd, buf, sizeof(buf), 0);
+	len = sgx_recv(fd, buf, sizeof(buf), 0);
 
 	printf("%s: read %d%s\n", __func__,
 	    len, len ? "" : " - means EOF");
@@ -105,7 +105,7 @@ main(int argc, char **argv)
 		return (1);
 
 
-	if (send(pair[0], test, (int)strlen(test)+1, 0) < 0)
+	if (sgx_send(pair[0], test, (int)strlen(test)+1, 0) < 0)
 		return (1);
 	shutdown(pair[0], SHUT_WR);
 

@@ -217,7 +217,7 @@ thread_basic(void *arg)
 			event_del(notification_event);
 			if (event_reinit(base) < 0) {
 				TT_FAIL(("reinit"));
-				exit(1);
+				sgx_exit(1);
 			}
 			event_assign(notification_event, base,
 			    base->th_notify_fd[0], EV_READ|EV_PERSIST,

@@ -55,7 +55,7 @@
 #ifdef _EVENT_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
-#include <errno.h>
+#include <sgx_errno.h>
 
 #include <event.h>
 #include <evutil.h>
@@ -72,11 +72,11 @@ read_cb(evutil_socket_t fd, short which, void *arg)
 	ev_intptr_t idx = (ev_intptr_t) arg, widx = idx + 1;
 	u_char ch;
 
-	count += recv(fd, (char*)&ch, sizeof(ch), 0);
+	count += sgx_recv(fd, (char*)&ch, sizeof(ch), 0);
 	if (writes) {
 		if (widx >= num_pipes)
 			widx -= num_pipes;
-		send(pipes[2 * widx + 1], "e", 1, 0);
+		sgx_send(pipes[2 * widx + 1], "e", 1, 0);
 		writes--;
 		fired++;
 	}
@@ -102,7 +102,7 @@ run_once(void)
 	space = num_pipes / num_active;
 	space = space * 2;
 	for (i = 0; i < num_active; i++, fired++)
-		send(pipes[i * space + 1], "e", 1, 0);
+		sgx_send(pipes[i * space + 1], "e", 1, 0);
 
 	count = 0;
 	writes = num_writes;
@@ -114,7 +114,7 @@ run_once(void)
 	} while (count != fired);
 	evutil_gettimeofday(&te, NULL);
 
-	if (xcount != count) fprintf(stderr, "Xcount: %d, Rcount: %d\n", xcount, count);
+	if (xcount != count) printf("Xcount: %d, Rcount: %d\n", xcount, count);
 	}
 
 	evutil_timersub(&te, &ts, &te);
@@ -151,8 +151,8 @@ main(int argc, char **argv)
 			num_writes = atoi(optarg);
 			break;
 		default:
-			fprintf(stderr, "Illegal argument \"%c\"\n", c);
-			exit(1);
+			printf("Illegal argument \"%c\"\n", c);
+			sgx_exit(1);
 		}
 	}
 
@@ -160,7 +160,7 @@ main(int argc, char **argv)
 	rl.rlim_cur = rl.rlim_max = num_pipes * 2 + 50;
 	if (setrlimit(RLIMIT_NOFILE, &rl) == -1) {
 		perror("setrlimit");
-		exit(1);
+		sgx_exit(1);
 	}
 #endif
 
@@ -168,7 +168,7 @@ main(int argc, char **argv)
 	pipes = calloc(num_pipes * 2, sizeof(evutil_socket_t));
 	if (events == NULL || pipes == NULL) {
 		perror("malloc");
-		exit(1);
+		sgx_exit(1);
 	}
 
 	event_init();
@@ -180,17 +180,17 @@ main(int argc, char **argv)
 		if (evutil_socketpair(AF_UNIX, SOCK_STREAM, 0, cp) == -1) {
 #endif
 			perror("pipe");
-			exit(1);
+			sgx_exit(1);
 		}
 	}
 
 	for (i = 0; i < 25; i++) {
 		tv = run_once();
 		if (tv == NULL)
-			exit(1);
-		fprintf(stdout, "%ld\n",
+			sgx_exit(1);
+		printf("%ld\n",
 			tv->tv_sec * 1000000L + tv->tv_usec);
 	}
 
-	exit(0);
+	sgx_exit(0);
 }

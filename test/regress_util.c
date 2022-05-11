@@ -127,9 +127,9 @@ regress_ipv4_parse(void *ptr)
 			TT_FAIL(("%s parsed, but we expected an error", ent->addr));
 			continue;
 		}
-		if (ntohl(in.s_addr) != ent->res) {
+		if (sgx_ntohl(in.s_addr) != ent->res) {
 			TT_FAIL(("%s parsed to %lx, but we expected %lx", ent->addr,
-				(unsigned long)ntohl(in.s_addr),
+				(unsigned long)sgx_ntohl(in.s_addr),
 				(unsigned long)ent->res));
 			continue;
 		}
@@ -249,7 +249,7 @@ regress_sockaddr_port_parse(void *ptr)
 			sin.sin_len = sizeof(sin);
 #endif
 			sin.sin_family = AF_INET;
-			sin.sin_port = htons(ent->port);
+			sin.sin_port = sgx_htons(ent->port);
 			r = evutil_inet_pton(AF_INET, ent->addr, &sin.sin_addr);
 			if (1 != r) {
 				TT_FAIL(("Couldn't parse ipv4 target %s.", ent->addr));
@@ -265,7 +265,7 @@ regress_sockaddr_port_parse(void *ptr)
 			sin6.sin6_len = sizeof(sin6);
 #endif
 			sin6.sin6_family = AF_INET6;
-			sin6.sin6_port = htons(ent->port);
+			sin6.sin6_port = sgx_htons(ent->port);
 			r = evutil_inet_pton(AF_INET6, ent->addr, &sin6.sin6_addr);
 			if (1 != r) {
 				TT_FAIL(("Couldn't parse ipv6 target %s.", ent->addr));
@@ -454,7 +454,7 @@ fatalfn(int exitcode)
 	if (logsev != fatal_want_severity ||
 	    !logmsg ||
 	    strcmp(logmsg, fatal_want_message))
-		exit(0);
+		sgx_exit(0);
 	else
 		exit(exitcode);
 }
@@ -472,7 +472,7 @@ check_error_logging(void (*fn)(void), int wantexitcode,
 	if ((pid = regress_fork()) == 0) {
 		/* child process */
 		fn();
-		exit(0); /* should be unreachable. */
+		sgx_exit(0); /* should be unreachable. */
 	} else {
 		wait(&status);
 		exitcode = WEXITSTATUS(status);
@@ -498,7 +498,7 @@ err_fn(void)
 static void
 sock_err_fn(void)
 {
-	evutil_socket_t fd = socket(AF_INET, SOCK_STREAM, 0);
+	evutil_socket_t fd = sgx_socket(AF_INET, SOCK_STREAM, 0);
 #ifdef WIN32
 	EVUTIL_SET_SOCKET_ERROR(WSAEWOULDBLOCK);
 #else
@@ -570,7 +570,7 @@ test_evutil_log(void *ptr)
 #endif
 
 	/* Try with a socket errno. */
-	fd = socket(AF_INET, SOCK_STREAM, 0);
+	fd = sgx_socket(AF_INET, SOCK_STREAM, 0);
 #ifdef WIN32
 	evutil_snprintf(buf, sizeof(buf),
 	    "Unhappy socket: %s",
@@ -792,7 +792,7 @@ _test_ai_eq(const struct evutil_addrinfo *ai, const char *sockaddr_port,
 	if (ai->ai_addr->sa_family == AF_INET) {
 		struct sockaddr_in *sin = (struct sockaddr_in*)ai->ai_addr;
 		evutil_inet_ntop(AF_INET, &sin->sin_addr, buf, sizeof(buf));
-		gotport = ntohs(sin->sin_port);
+		gotport = sgx_ntohs(sin->sin_port);
 		if (ai->ai_addrlen != sizeof(struct sockaddr_in)) {
 			TT_FAIL(("Addr size mismatch on line %d", line));
 			return -1;
@@ -800,7 +800,7 @@ _test_ai_eq(const struct evutil_addrinfo *ai, const char *sockaddr_port,
 	} else {
 		struct sockaddr_in6 *sin6 = (struct sockaddr_in6*)ai->ai_addr;
 		evutil_inet_ntop(AF_INET6, &sin6->sin6_addr, buf, sizeof(buf));
-		gotport = ntohs(sin6->sin6_port);
+		gotport = sgx_ntohs(sin6->sin6_port);
 		if (ai->ai_addrlen != sizeof(struct sockaddr_in6)) {
 			TT_FAIL(("Addr size mismatch on line %d", line));
 			return -1;
@@ -1023,7 +1023,7 @@ test_evutil_getaddrinfo(void *arg)
 		tt_int_op(ai->ai_addrlen, ==, sizeof(struct sockaddr_in));
 		sin = (struct sockaddr_in*)ai->ai_addr;
 		tt_int_op(sin->sin_family, ==, AF_INET);
-		tt_int_op(sin->sin_port, ==, htons(80));
+		tt_int_op(sin->sin_port, ==, sgx_htons(80));
 		tt_int_op(sin->sin_addr.s_addr, !=, 0xffffffff);
 
 		cp = evutil_inet_ntop(AF_INET, &sin->sin_addr, buf, sizeof(buf));
@@ -1042,7 +1042,7 @@ test_evutil_getaddrinfo(void *arg)
 		tt_int_op(ai->ai_family, ==, PF_INET6);
 		tt_int_op(ai->ai_addrlen, ==, sizeof(struct sockaddr_in6));
 		sin6 = (struct sockaddr_in6*)ai->ai_addr;
-		tt_int_op(sin6->sin6_port, ==, htons(80));
+		tt_int_op(sin6->sin6_port, ==, sgx_htons(80));
 
 		cp = evutil_inet_ntop(AF_INET6, &sin6->sin6_addr, buf,
 		    sizeof(buf));
@@ -1059,6 +1059,8 @@ end:
 static void
 test_evutil_loadsyslib(void *arg)
 {
+	// SGX: Do nothing
+/*
 	HANDLE h=NULL;
 
 	h = evutil_load_windows_system_library(TEXT("kernel32.dll"));
@@ -1066,8 +1068,8 @@ test_evutil_loadsyslib(void *arg)
 
 end:
 	if (h)
-		CloseHandle(h);
-
+		sgx_CloseHandle(h);
+*/
 }
 #endif
 

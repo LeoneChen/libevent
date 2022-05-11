@@ -40,7 +40,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <errno.h>
+#include <sgx_errno.h>
 
 #include "event-internal.h"
 #include "evsignal-internal.h"
@@ -162,7 +162,7 @@ poll_dispatch(struct event_base *base, struct timeval *tv)
 
 	EVBASE_RELEASE_LOCK(base, th_base_lock);
 
-	res = poll(event_set, nfds, msec);
+	res = sgx_poll(event_set, nfds, msec);
 
 	EVBASE_ACQUIRE_LOCK(base, th_base_lock);
 
@@ -180,7 +180,7 @@ poll_dispatch(struct event_base *base, struct timeval *tv)
 	if (res == 0 || nfds == 0)
 		return (0);
 
-	i = random() % nfds;
+	i = sgx_rand() % nfds;
 	for (j = 0; j < nfds; j++) {
 		int what;
 		if (++i == nfds)

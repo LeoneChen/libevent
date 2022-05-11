@@ -60,13 +60,13 @@ extern "C" {
 #if !defined(_GNU_SOURCE)
 #define _GNU_SOURCE
 #endif
-#include <netdb.h>
+// #include <netdb.h>
 #endif
 
 #ifdef WIN32
 #include <winsock2.h>
 #else
-#include <sys/socket.h>
+// #include <sys/socket.h>
 #endif
 
 /* Some openbsd autoconf versions get the name of this macro wrong. */
@@ -326,10 +326,10 @@ int evutil_closesocket(evutil_socket_t sock);
 
 #ifdef WIN32
 /** Return the most recent socket error.  Not idempotent on all platforms. */
-#define EVUTIL_SOCKET_ERROR() WSAGetLastError()
+#define EVUTIL_SOCKET_ERROR() sgx_WSAGetLastError()
 /** Replace the most recent socket error with errcode */
 #define EVUTIL_SET_SOCKET_ERROR(errcode)		\
-	do { WSASetLastError(errcode); } while (0)
+	do { sgx_WSASetLastError(errcode); } while (0)
 /** Return the most recent socket error to occur on sock. */
 int evutil_socket_geterror(evutil_socket_t sock);
 /** Convert a socket error to a string. */
@@ -432,7 +432,7 @@ ev_int64_t evutil_strtoll(const char *s, char **endptr, int base);
 
 /** Replacement for gettimeofday on platforms that lack it. */
 #ifdef _EVENT_HAVE_GETTIMEOFDAY
-#define evutil_gettimeofday(tv, tz) gettimeofday((tv), (tz))
+#define evutil_gettimeofday(tv, tz) sgx_gettimeofday((tv))
 #else
 struct timezone;
 int evutil_gettimeofday(struct timeval *tv, struct timezone *tz);
@@ -520,6 +520,7 @@ struct evutil_addrinfo {
 	struct sockaddr  *ai_addr; /* binary address */
 	struct evutil_addrinfo  *ai_next; /* next structure in linked list */
 };
+typedef struct evutil_addrinfo evutil_addrinfo;
 #endif
 /** @name evutil_getaddrinfo() error codes
 

@@ -40,7 +40,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <errno.h>
+#include <sgx_errno.h>
 #ifdef _EVENT_HAVE_FCNTL_H
 #include <fcntl.h>
 #endif
@@ -112,7 +112,7 @@ epoll_init(struct event_base *base)
 
 	/* Initialize the kernel queue.  (The size field is ignored since
 	 * 2.6.8.) */
-	if ((epfd = epoll_create(32000)) == -1) {
+	if ((epfd = sgx_epoll_create(32000)) == -1) {
 		if (errno != ENOSYS)
 			event_warn("epoll_create");
 		return (NULL);
@@ -121,7 +121,7 @@ epoll_init(struct event_base *base)
 	evutil_make_socket_closeonexec(epfd);
 
 	if (!(epollop = mm_calloc(1, sizeof(struct epollop)))) {
-		close(epfd);
+		sgx_close(epfd);
 		return (NULL);
 	}
 
@@ -131,7 +131,7 @@ epoll_init(struct event_base *base)
 	epollop->events = mm_calloc(INITIAL_NEVENT, sizeof(struct epoll_event));
 	if (epollop->events == NULL) {
 		mm_free(epollop);
-		close(epfd);
+		sgx_close(epfd);
 		return (NULL);
 	}
 	epollop->nevents = INITIAL_NEVENT;
@@ -262,13 +262,13 @@ epoll_apply_one_change(struct event_base *base,
 		memset(&epev, 0, sizeof(epev));
 		epev.data.fd = ch->fd;
 		epev.events = events;
-		if (epoll_ctl(epollop->epfd, op, ch->fd, &epev) == -1) {
+		if (sgx_epoll_ctl(epollop->epfd, op, ch->fd, &epev) == -1) {
 			if (op == EPOLL_CTL_MOD && errno == ENOENT) {
 				/* If a MOD operation fails with ENOENT, the
 				 * fd was probably closed and re-opened.  We
 				 * should retry the operation as an ADD.
 				 */
-				if (epoll_ctl(epollop->epfd, EPOLL_CTL_ADD, ch->fd, &epev) == -1) {
+				if (sgx_epoll_ctl(epollop->epfd, EPOLL_CTL_ADD, ch->fd, &epev) == -1) {
 					event_warn("Epoll MOD(%d) on %d retried as ADD; that failed too",
 					    (int)epev.events, ch->fd);
 					return -1;
@@ -285,7 +285,7 @@ epoll_apply_one_change(struct event_base *base,
 				 * same file into the same fd gives you the same epitem
 				 * rather than a fresh one.  For the second case,
 				 * we must retry with MOD. */
-				if (epoll_ctl(epollop->epfd, EPOLL_CTL_MOD, ch->fd, &epev) == -1) {
+				if (sgx_epoll_ctl(epollop->epfd, EPOLL_CTL_MOD, ch->fd, &epev) == -1) {
 					event_warn("Epoll ADD(%d) on %d retried as MOD; that failed too",
 					    (int)epev.events, ch->fd);
 					return -1;
@@ -404,7 +404,7 @@ epoll_dispatch(struct event_base *base, struct timeval *tv)
 
 	EVBASE_RELEASE_LOCK(base, th_base_lock);
 
-	res = epoll_wait(epollop->epfd, events, epollop->nevents, timeout);
+	res = sgx_epoll_wait(epollop->epfd, events, epollop->nevents, timeout);
 
 	EVBASE_ACQUIRE_LOCK(base, th_base_lock);
 
@@ -466,7 +466,7 @@ epoll_dealloc(struct event_base *base)
 	if (epollop->events)
 		mm_free(epollop->events);
 	if (epollop->epfd >= 0)
-		close(epollop->epfd);
+		sgx_close(epollop->epfd);
 
 	memset(epollop, 0, sizeof(struct epollop));
 	mm_free(epollop);

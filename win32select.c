@@ -35,7 +35,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
+#include <sgx_errno.h>
 
 #include "event2/util.h"
 #include "event2/event-config.h"
@@ -304,16 +304,16 @@ win32_dispatch(struct event_base *base, struct timeval *tv)
 		if (msec < 0)
 			msec = LONG_MAX;
 		/* Windows doesn't like you to call select() with no sockets */
-		Sleep(msec);
+		sgx_Sleep(msec);
 		return (0);
 	}
 
 	EVBASE_RELEASE_LOCK(base, th_base_lock);
 
-	res = select(fd_count,
-		     (struct fd_set*)win32op->readset_out,
-		     (struct fd_set*)win32op->writeset_out,
-		     (struct fd_set*)win32op->exset_out, tv);
+	res = sgx_select(fd_count,
+		     (void *)win32op->readset_out,
+		     (void *)win32op->writeset_out,
+		     (void *)win32op->exset_out, sizeof(struct win_fd_set)*fd_count, tv);
 
 	EVBASE_ACQUIRE_LOCK(base, th_base_lock);
 
@@ -324,7 +324,7 @@ win32_dispatch(struct event_base *base, struct timeval *tv)
 	}
 
 	if (win32op->readset_out->fd_count) {
-		i = rand() % win32op->readset_out->fd_count;
+		i = sgx_rand() % win32op->readset_out->fd_count;
 		for (j=0; j<win32op->readset_out->fd_count; ++j) {
 			if (++i >= win32op->readset_out->fd_count)
 				i = 0;
@@ -333,7 +333,7 @@ win32_dispatch(struct event_base *base, struct timeval *tv)
 		}
 	}
 	if (win32op->exset_out->fd_count) {
-		i = rand() % win32op->exset_out->fd_count;
+		i = sgx_rand() % win32op->exset_out->fd_count;
 		for (j=0; j<win32op->exset_out->fd_count; ++j) {
 			if (++i >= win32op->exset_out->fd_count)
 				i = 0;
@@ -343,7 +343,7 @@ win32_dispatch(struct event_base *base, struct timeval *tv)
 	}
 	if (win32op->writeset_out->fd_count) {
 		SOCKET s;
-		i = rand() % win32op->writeset_out->fd_count;
+		i = sgx_rand() % win32op->writeset_out->fd_count;
 		for (j=0; j<win32op->writeset_out->fd_count; ++j) {
 			if (++i >= win32op->writeset_out->fd_count)
 				i = 0;

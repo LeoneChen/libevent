@@ -39,7 +39,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <errno.h>
+#include <sgx_errno.h>
 
 #include "event2/event.h"
 #include "event2/event_struct.h"

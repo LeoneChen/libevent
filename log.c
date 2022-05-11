@@ -50,7 +50,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
-#include <errno.h>
+#include <sgx_errno.h>
 #include "event2/event.h"
 #include "event2/util.h"
 
@@ -74,11 +74,11 @@ event_exit(int errcode)
 {
 	if (fatal_fn) {
 		fatal_fn(errcode);
-		exit(errcode); /* should never be reached */
+		sgx_exit(errcode); /* should never be reached */
 	} else if (errcode == _EVENT_ERR_ABORT)
 		abort();
 	else
-		exit(errcode);
+		sgx_exit(errcode);
 }
 
 void
@@ -219,6 +219,5 @@ event_log(int severity, const char *msg)
 			severity_str = "???";
 			break;
 		}
-		(void)fprintf(stderr, "[%s] %s\n", severity_str, msg);
 	}
 }

@@ -57,7 +57,7 @@
 
 #include <sys/time.h>
 #include <sys/queue.h>
-#include <errno.h>
+#include <sgx_errno.h>
 #include <poll.h>
 #include <port.h>
 #include <signal.h>

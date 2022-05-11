@@ -24,7 +24,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <errno.h>
+#include <sgx_errno.h>
 
 #include <event.h>
 
@@ -41,14 +41,14 @@ fifo_read(evutil_socket_t fd, short event, void *arg)
 	/* Reschedule this event */
 	event_add(ev, NULL);
 
-	fprintf(stderr, "fifo_read called with fd: %d, event: %d, arg: %p\n",
+	printf("fifo_read called with fd: %d, event: %d, arg: %p\n",
 	    (int)fd, event, arg);
 #ifdef WIN32
 	len = ReadFile((HANDLE)fd, buf, sizeof(buf) - 1, &dwBytesRead, NULL);
 
 	/* Check for end of file. */
 	if (len && dwBytesRead == 0) {
-		fprintf(stderr, "End Of File");
+		printf("End Of File");
 		event_del(ev);
 		return;
 	}
@@ -61,13 +61,13 @@ fifo_read(evutil_socket_t fd, short event, void *arg)
 		perror("read");
 		return;
 	} else if (len == 0) {
-		fprintf(stderr, "Connection closed\n");
+		printf("Connection closed\n");
 		return;
 	}
 
 	buf[len] = '\0';
 #endif
-	fprintf(stdout, "Read: %s\n", buf);
+	printf("Read: %s\n", buf);
 }
 
 int
@@ -97,14 +97,14 @@ main(int argc, char **argv)
 		if ((st.st_mode & S_IFMT) == S_IFREG) {
 			errno = EEXIST;
 			perror("lstat");
-			exit(1);
+			sgx_exit(1);
 		}
 	}
 
 	unlink(fifo);
 	if (mkfifo(fifo, 0600) == -1) {
 		perror("mkfifo");
-		exit(1);
+		sgx_exit(1);
 	}
 
 	/* Linux pipes are broken, we need O_RDWR instead of O_RDONLY */
@@ -116,10 +116,10 @@ main(int argc, char **argv)
 
 	if (socket == -1) {
 		perror("open");
-		exit(1);
+		sgx_exit(1);
 	}
 
-	fprintf(stderr, "Write data to %s\n", fifo);
+	printf("Write data to %s\n", fifo);
 #endif
 	/* Initalize the event library */
 	event_init();
@@ -136,7 +136,7 @@ main(int argc, char **argv)
 
 	event_dispatch();
 #ifdef WIN32
-	CloseHandle(socket);
+	sgx_CloseHandle(socket);
 #endif
 	return (0);
 }

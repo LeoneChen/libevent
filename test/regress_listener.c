@@ -86,7 +86,7 @@ regress_pick_a_port(void *arg)
 
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
-	sin.sin_addr.s_addr = htonl(0x7f000001); /* 127.0.0.1 */
+	sin.sin_addr.s_addr = sgx_htonl(0x7f000001); /* 127.0.0.1 */
 	sin.sin_port = 0; /* "You pick!" */
 
 	listener1 = evconnlistener_new_bind(base, acceptcb, &count1,
@@ -98,17 +98,17 @@ regress_pick_a_port(void *arg)
 
 	tt_int_op(evconnlistener_get_fd(listener1), >=, 0);
 	tt_int_op(evconnlistener_get_fd(listener2), >=, 0);
-	tt_assert(getsockname(evconnlistener_get_fd(listener1),
+	tt_assert(sgx_getsockname(evconnlistener_get_fd(listener1),
 		(struct sockaddr*)&ss1, &slen1) == 0);
-	tt_assert(getsockname(evconnlistener_get_fd(listener2),
+	tt_assert(sgx_getsockname(evconnlistener_get_fd(listener2),
 		(struct sockaddr*)&ss2, &slen2) == 0);
 	tt_int_op(ss1.ss_family, ==, AF_INET);
 	tt_int_op(ss2.ss_family, ==, AF_INET);
 
 	sin1 = (struct sockaddr_in*)&ss1;
 	sin2 = (struct sockaddr_in*)&ss2;
-	tt_int_op(ntohl(sin1->sin_addr.s_addr), ==, 0x7f000001);
-	tt_int_op(ntohl(sin2->sin_addr.s_addr), ==, 0x7f000001);
+	tt_int_op(sgx_ntohl(sin1->sin_addr.s_addr), ==, 0x7f000001);
+	tt_int_op(sgx_ntohl(sin2->sin_addr.s_addr), ==, 0x7f000001);
 	tt_int_op(sin1->sin_port, !=, sin2->sin_port);
 
 	tt_ptr_op(evconnlistener_get_base(listener1), ==, base);
@@ -162,7 +162,7 @@ regress_listener_error(void *arg)
 	}
 
 	/* send, so that pair[0] will look 'readable'*/
-	tt_int_op(send(data->pair[1], "hello", 5, 0), >, 0);
+	tt_int_op(sgx_send(data->pair[1], "hello", 5, 0), >, 0);
 
 	/* Start a listener with a bogus socket. */
 	listener = evconnlistener_new(base, acceptcb, &count,

@@ -41,7 +41,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <errno.h>
+#include <sgx_errno.h>
 #ifdef _EVENT_HAVE_INTTYPES_H
 #include <inttypes.h>
 #endif
@@ -126,7 +126,7 @@ kq_init(struct event_base *base)
 
 	kqueueop->kq = kq;
 
-	kqueueop->pid = getpid();
+	kqueueop->pid = sgx_getpid();
 
 	/* Initialize fields */
 	kqueueop->changes = mm_calloc(NEVENT, sizeof(struct kevent));
@@ -402,7 +402,7 @@ kqop_free(struct kqop *kqop)
 		mm_free(kqop->changes);
 	if (kqop->events)
 		mm_free(kqop->events);
-	if (kqop->kq >= 0 && kqop->pid == getpid())
+	if (kqop->kq >= 0 && kqop->pid == sgx_getpid())
 		close(kqop->kq);
 	memset(kqop, 0, sizeof(struct kqop));
 	mm_free(kqop);

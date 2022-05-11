@@ -27,7 +27,7 @@
 #define _EVENT_UTIL_INTERNAL_H
 
 #include "event2/event-config.h"
-#include <errno.h>
+#include <sgx_errno.h>
 
 /* For EVUTIL_ASSERT */
 #include "log-internal.h"
@@ -203,8 +203,7 @@ long _evutil_weakrand(void);
 			    __FILE__,__LINE__,#cond,__func__);		\
 			/* In case a user-supplied handler tries to */	\
 			/* return control to us, log and abort here. */	\
-			(void)fprintf(stderr,				\
-			    "%s:%d: Assertion %s failed in %s",		\
+			(void)printf("%s:%d: Assertion %s failed in %s",		\
 			    __FILE__,__LINE__,#cond,__func__);		\
 			abort();					\
 		}							\

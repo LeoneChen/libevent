@@ -49,7 +49,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <errno.h>
+#include <sgx_errno.h>
 
 #include "event2/dns.h"
 
@@ -148,12 +148,12 @@ http_connect(const char *address, u_short port)
 	sa = aitop->ai_addr;
 	slen = aitop->ai_addrlen;
 
-	fd = socket(AF_INET, SOCK_STREAM, 0);
+	fd = sgx_socket(AF_INET, SOCK_STREAM, 0);
 	if (fd == -1)
 		event_err(1, "socket failed");
 
 	evutil_make_socket_nonblocking(fd);
-	if (connect(fd, sa, slen) == -1) {
+	if (sgx_connect(fd, sa, slen) == -1) {
 #ifdef WIN32
 		int tmp_err = WSAGetLastError();
 		if (tmp_err != WSAEINPROGRESS && tmp_err != WSAEINVAL &&
@@ -233,8 +233,8 @@ http_readcb(struct bufferevent *bev, void *arg)
 		else if (my_base)
 			event_base_loopexit(my_base, NULL);
 		else {
-			fprintf(stderr, "No way to exit loop!\n");
-			exit(1);
+			printf("No way to exit loop!\n");
+			sgx_exit(1);
 		}
 	}
 }
@@ -369,8 +369,8 @@ http_basic_test(void *arg)
 
 	/* bind to a second socket */
 	if (http_bind(http, &port2) == -1) {
-		fprintf(stdout, "FAILED (bind)\n");
-		exit(1);
+		printf("FAILED (bind)\n");
+		sgx_exit(1);
 	}
 
 	fd = http_connect("127.0.0.1", port);
@@ -584,8 +584,8 @@ http_bad_request_test(void *arg)
 	evutil_closesocket(fd);
 
 	if (test_ok != 0) {
-		fprintf(stdout, "FAILED\n");
-		exit(1);
+		printf("FAILED\n");
+		sgx_exit(1);
 	}
 
 	/* Second answer (BAD REQUEST) on connection close */
@@ -646,8 +646,8 @@ http_delete_cb(struct evhttp_request *req, void *arg)
 
 	/* Expecting a DELETE request */
 	if (evhttp_request_get_command(req) != EVHTTP_REQ_DELETE) {
-		fprintf(stdout, "FAILED (delete type)\n");
-		exit(1);
+		printf("FAILED (delete type)\n");
+		sgx_exit(1);
 	}
 
 	event_debug(("%s: called\n", __func__));
@@ -851,8 +851,8 @@ _http_connection_test(struct basic_test_data *data, int persistent)
 
 	/* We give ownership of the request to the connection */
 	if (evhttp_make_request(evcon, req, EVHTTP_REQ_GET, "/test") == -1) {
-		fprintf(stdout, "FAILED\n");
-		exit(1);
+		printf("FAILED\n");
+		sgx_exit(1);
 	}
 
 	event_base_dispatch(data->base);
@@ -960,8 +960,8 @@ http_connection_async_test(void *arg)
 
 	/* We give ownership of the request to the connection */
 	if (evhttp_make_request(evcon, req, EVHTTP_REQ_GET, "/test") == -1) {
-		fprintf(stdout, "FAILED\n");
-		exit(1);
+		printf("FAILED\n");
+		sgx_exit(1);
 	}
 
 	event_base_dispatch(data->base);
@@ -1017,8 +1017,8 @@ http_connection_async_test(void *arg)
 static void
 http_request_never_call(struct evhttp_request *req, void *arg)
 {
-	fprintf(stdout, "FAILED\n");
-	exit(1);
+	printf("FAILED\n");
+	sgx_exit(1);
 }
 
 static void
@@ -1122,23 +1122,23 @@ http_request_done(struct evhttp_request *req, void *arg)
 	const char *what = arg;
 
 	if (evhttp_request_get_response_code(req) != HTTP_OK) {
-		fprintf(stderr, "FAILED\n");
-		exit(1);
+		printf("FAILED\n");
+		sgx_exit(1);
 	}
 
 	if (evhttp_find_header(evhttp_request_get_input_headers(req), "Content-Type") == NULL) {
-		fprintf(stderr, "FAILED\n");
-		exit(1);
+		printf("FAILED\n");
+		sgx_exit(1);
 	}
 
 	if (evbuffer_get_length(evhttp_request_get_input_buffer(req)) != strlen(what)) {
-		fprintf(stderr, "FAILED\n");
-		exit(1);
+		printf("FAILED\n");
+		sgx_exit(1);
 	}
 
 	if (evbuffer_datacmp(evhttp_request_get_input_buffer(req), what) != 0) {
-		fprintf(stderr, "FAILED\n");
-		exit(1);
+		printf("FAILED\n");
+		sgx_exit(1);
 	}
 
 	test_ok = 1;
@@ -1150,8 +1150,8 @@ static void
 http_request_expect_error(struct evhttp_request *req, void *arg)
 {
 	if (evhttp_request_get_response_code(req) == HTTP_OK) {
-		fprintf(stderr, "FAILED\n");
-		exit(1);
+		printf("FAILED\n");
+		sgx_exit(1);
 	}
 
 	test_ok = 1;
@@ -1224,8 +1224,8 @@ http_virtual_host_test(void *arg)
 	/* We give ownership of the request to the connection */
 	if (evhttp_make_request(evcon, req, EVHTTP_REQ_GET,
 		"/funnybunny") == -1) {
-		fprintf(stdout, "FAILED\n");
-		exit(1);
+		printf("FAILED\n");
+		sgx_exit(1);
 	}
 
 	event_base_dispatch(data->base);
@@ -1326,30 +1326,30 @@ static void
 http_request_empty_done(struct evhttp_request *req, void *arg)
 {
 	if (evhttp_request_get_response_code(req) != HTTP_OK) {
-		fprintf(stderr, "FAILED\n");
-		exit(1);
+		printf("FAILED\n");
+		sgx_exit(1);
 	}
 
 	if (evhttp_find_header(evhttp_request_get_input_headers(req), "Date") == NULL) {
-		fprintf(stderr, "FAILED\n");
-		exit(1);
+		printf("FAILED\n");
+		sgx_exit(1);
 	}
 
 
 	if (evhttp_find_header(evhttp_request_get_input_headers(req), "Content-Length") == NULL) {
-		fprintf(stderr, "FAILED\n");
-		exit(1);
+		printf("FAILED\n");
+		sgx_exit(1);
 	}
 
 	if (strcmp(evhttp_find_header(evhttp_request_get_input_headers(req), "Content-Length"),
 		"0")) {
-		fprintf(stderr, "FAILED\n");
-		exit(1);
+		printf("FAILED\n");
+		sgx_exit(1);
 	}
 
 	if (evbuffer_get_length(evhttp_request_get_input_buffer(req)) != 0) {
-		fprintf(stderr, "FAILED\n");
-		exit(1);
+		printf("FAILED\n");
+		sgx_exit(1);
 	}
 
 	test_ok = 1;
@@ -1381,24 +1381,24 @@ http_dispatcher_test_done(struct evhttp_request *req, void *arg)
 	const char *what = "DISPATCHER_TEST";
 
 	if (evhttp_request_get_response_code(req) != HTTP_OK) {
-		fprintf(stderr, "FAILED\n");
-		exit(1);
+		printf("FAILED\n");
+		sgx_exit(1);
 	}
 
 	if (evhttp_find_header(evhttp_request_get_input_headers(req), "Content-Type") == NULL) {
-		fprintf(stderr, "FAILED (content type)\n");
-		exit(1);
+		printf("FAILED (content type)\n");
+		sgx_exit(1);
 	}
 
 	if (evbuffer_get_length(evhttp_request_get_input_buffer(req)) != strlen(what)) {
-		fprintf(stderr, "FAILED (length %lu vs %lu)\n",
+		printf("FAILED (length %lu vs %lu)\n",
 		    (unsigned long)evbuffer_get_length(evhttp_request_get_input_buffer(req)), (unsigned long)strlen(what));
-		exit(1);
+		sgx_exit(1);
 	}
 
 	if (evbuffer_datacmp(evhttp_request_get_input_buffer(req), what) != 0) {
-		fprintf(stderr, "FAILED (data)\n");
-		exit(1);
+		printf("FAILED (data)\n");
+		sgx_exit(1);
 	}
 
 	test_ok = 1;
@@ -1453,7 +1453,7 @@ http_dispatcher_test(void *arg)
 
 void http_postrequest_done(struct evhttp_request *, void *);
 
-#define POST_DATA "Okay.  Not really printf"
+#define POST_DATA "Okay.  Not really printf("
 
 static void
 http_post_test(void *arg)
@@ -1525,21 +1525,21 @@ http_post_cb(struct evhttp_request *req, void *arg)
 
 	/* Yes, we are expecting a post request */
 	if (evhttp_request_get_command(req) != EVHTTP_REQ_POST) {
-		fprintf(stdout, "FAILED (post type)\n");
-		exit(1);
+		printf("FAILED (post type)\n");
+		sgx_exit(1);
 	}
 
 	if (evbuffer_get_length(evhttp_request_get_input_buffer(req)) != strlen(POST_DATA)) {
-		fprintf(stdout, "FAILED (length: %lu vs %lu)\n",
+		printf("FAILED (length: %lu vs %lu)\n",
 		    (unsigned long) evbuffer_get_length(evhttp_request_get_input_buffer(req)), (unsigned long) strlen(POST_DATA));
-		exit(1);
+		sgx_exit(1);
 	}
 
 	if (evbuffer_datacmp(evhttp_request_get_input_buffer(req), POST_DATA) != 0) {
-		fprintf(stdout, "FAILED (data)\n");
-		fprintf(stdout, "Got :%s\n", evbuffer_pullup(evhttp_request_get_input_buffer(req),-1));
-		fprintf(stdout, "Want:%s\n", POST_DATA);
-		exit(1);
+		printf("FAILED (data)\n");
+		printf("Got :%s\n", evbuffer_pullup(evhttp_request_get_input_buffer(req),-1));
+		printf("Want:%s\n", POST_DATA);
+		sgx_exit(1);
 	}
 
 	evb = evbuffer_new();
@@ -1557,30 +1557,30 @@ http_postrequest_done(struct evhttp_request *req, void *arg)
 	struct event_base *base = arg;
 
 	if (req == NULL) {
-		fprintf(stderr, "FAILED (timeout)\n");
-		exit(1);
+		printf("FAILED (timeout)\n");
+		sgx_exit(1);
 	}
 
 	if (evhttp_request_get_response_code(req) != HTTP_OK) {
 
-		fprintf(stderr, "FAILED (response code)\n");
-		exit(1);
+		printf("FAILED (response code)\n");
+		sgx_exit(1);
 	}
 
 	if (evhttp_find_header(evhttp_request_get_input_headers(req), "Content-Type") == NULL) {
-		fprintf(stderr, "FAILED (content type)\n");
-		exit(1);
+		printf("FAILED (content type)\n");
+		sgx_exit(1);
 	}
 
 	if (evbuffer_get_length(evhttp_request_get_input_buffer(req)) != strlen(what)) {
-		fprintf(stderr, "FAILED (length %lu vs %lu)\n",
+		printf("FAILED (length %lu vs %lu)\n",
 		    (unsigned long)evbuffer_get_length(evhttp_request_get_input_buffer(req)), (unsigned long)strlen(what));
-		exit(1);
+		sgx_exit(1);
 	}
 
 	if (evbuffer_datacmp(evhttp_request_get_input_buffer(req), what) != 0) {
-		fprintf(stderr, "FAILED (data)\n");
-		exit(1);
+		printf("FAILED (data)\n");
+		sgx_exit(1);
 	}
 
 	test_ok = 1;
@@ -1643,21 +1643,21 @@ http_put_cb(struct evhttp_request *req, void *arg)
 
 	/* Expecting a PUT request */
 	if (evhttp_request_get_command(req) != EVHTTP_REQ_PUT) {
-		fprintf(stdout, "FAILED (put type)\n");
-		exit(1);
+		printf("FAILED (put type)\n");
+		sgx_exit(1);
 	}
 
 	if (evbuffer_get_length(evhttp_request_get_input_buffer(req)) != strlen(PUT_DATA)) {
-		fprintf(stdout, "FAILED (length: %lu vs %lu)\n",
+		printf("FAILED (length: %lu vs %lu)\n",
 		    (unsigned long)evbuffer_get_length(evhttp_request_get_input_buffer(req)), (unsigned long)strlen(PUT_DATA));
-		exit(1);
+		sgx_exit(1);
 	}
 
 	if (evbuffer_datacmp(evhttp_request_get_input_buffer(req), PUT_DATA) != 0) {
-		fprintf(stdout, "FAILED (data)\n");
-		fprintf(stdout, "Got :%s\n", evbuffer_pullup(evhttp_request_get_input_buffer(req),-1));
-		fprintf(stdout, "Want:%s\n", PUT_DATA);
-		exit(1);
+		printf("FAILED (data)\n");
+		printf("Got :%s\n", evbuffer_pullup(evhttp_request_get_input_buffer(req),-1));
+		printf("Want:%s\n", PUT_DATA);
+		sgx_exit(1);
 	}
 
 	evb = evbuffer_new();
@@ -1675,31 +1675,31 @@ http_putrequest_done(struct evhttp_request *req, void *arg)
 	const char *what = "That ain't funny";
 
 	if (req == NULL) {
-		fprintf(stderr, "FAILED (timeout)\n");
-		exit(1);
+		printf("FAILED (timeout)\n");
+		sgx_exit(1);
 	}
 
 	if (evhttp_request_get_response_code(req) != HTTP_OK) {
 
-		fprintf(stderr, "FAILED (response code)\n");
-		exit(1);
+		printf("FAILED (response code)\n");
+		sgx_exit(1);
 	}
 
 	if (evhttp_find_header(evhttp_request_get_input_headers(req), "Content-Type") == NULL) {
-		fprintf(stderr, "FAILED (content type)\n");
-		exit(1);
+		printf("FAILED (content type)\n");
+		sgx_exit(1);
 	}
 
 	if (evbuffer_get_length(evhttp_request_get_input_buffer(req)) != strlen(what)) {
-		fprintf(stderr, "FAILED (length %lu vs %lu)\n",
+		printf("FAILED (length %lu vs %lu)\n",
 		    (unsigned long)evbuffer_get_length(evhttp_request_get_input_buffer(req)), (unsigned long)strlen(what));
-		exit(1);
+		sgx_exit(1);
 	}
 
 
 	if (evbuffer_datacmp(evhttp_request_get_input_buffer(req), what) != 0) {
-		fprintf(stderr, "FAILED (data)\n");
-		exit(1);
+		printf("FAILED (data)\n");
+		sgx_exit(1);
 	}
 
 	test_ok = 1;
@@ -2735,26 +2735,26 @@ static void
 http_chunked_request_done(struct evhttp_request *req, void *arg)
 {
 	if (evhttp_request_get_response_code(req) != HTTP_OK) {
-		fprintf(stderr, "FAILED\n");
-		exit(1);
+		printf("FAILED\n");
+		sgx_exit(1);
 	}
 
 	if (evhttp_find_header(evhttp_request_get_input_headers(req),
 		"Transfer-Encoding") == NULL) {
-		fprintf(stderr, "FAILED\n");
-		exit(1);
+		printf("FAILED\n");
+		sgx_exit(1);
 	}
 
 	if (evbuffer_get_length(evhttp_request_get_input_buffer(req)) != 13 + 18 + 8) {
-		fprintf(stderr, "FAILED\n");
-		exit(1);
+		printf("FAILED\n");
+		sgx_exit(1);
 	}
 
 	if (strncmp((char *)evbuffer_pullup(evhttp_request_get_input_buffer(req), 13 + 18 + 8),
 		"This is funnybut not hilarious.bwv 1052",
 		13 + 18 + 8)) {
-		fprintf(stderr, "FAILED\n");
-		exit(1);
+		printf("FAILED\n");
+		sgx_exit(1);
 	}
 
 	test_ok = 1;
@@ -2886,8 +2886,8 @@ http_stream_in_chunk(struct evhttp_request *req, void *arg)
 	struct evbuffer *reply = arg;
 
 	if (evhttp_request_get_response_code(req) != HTTP_OK) {
-		fprintf(stderr, "FAILED\n");
-		exit(1);
+		printf("FAILED\n");
+		sgx_exit(1);
 	}
 
 	evbuffer_add_buffer(reply, evhttp_request_get_input_buffer(req));
@@ -2897,8 +2897,8 @@ static void
 http_stream_in_done(struct evhttp_request *req, void *arg)
 {
 	if (evbuffer_get_length(evhttp_request_get_input_buffer(req)) != 0) {
-		fprintf(stderr, "FAILED\n");
-		exit(1);
+		printf("FAILED\n");
+		sgx_exit(1);
 	}
 
 	event_base_loopexit(exit_base, NULL);
@@ -3297,8 +3297,8 @@ static void
 http_request_bad(struct evhttp_request *req, void *arg)
 {
 	if (req != NULL) {
-		fprintf(stderr, "FAILED\n");
-		exit(1);
+		printf("FAILED\n");
+		sgx_exit(1);
 	}
 
 	test_ok = 1;

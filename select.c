@@ -41,7 +41,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <errno.h>
+#include <sgx_errno.h>
 
 #include "event-internal.h"
 #include "evsignal-internal.h"
@@ -158,7 +158,7 @@ select_dispatch(struct event_base *base, struct timeval *tv)
 
 	EVBASE_RELEASE_LOCK(base, th_base_lock);
 
-	res = select(nfds, sop->event_readset_out,
+	res = sgx_select(nfds, sop->event_readset_out,
 	    sop->event_writeset_out, NULL, tv);
 
 	EVBASE_ACQUIRE_LOCK(base, th_base_lock);
@@ -177,7 +177,7 @@ select_dispatch(struct event_base *base, struct timeval *tv)
 	event_debug(("%s: select reports %d", __func__, res));
 
 	check_selectop(sop);
-	i = random() % nfds;
+	i = sgx_rand() % nfds;
 	for (j = 0; j < nfds; ++j) {
 		if (++i >= nfds)
 			i = 0;

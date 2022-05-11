@@ -41,7 +41,7 @@ static const char *
 debug_ntoa(u32 address)
 {
 	static char buf[32];
-	u32 a = ntohl(address);
+	u32 a = sgx_ntohl(address);
 	evutil_snprintf(buf, sizeof(buf), "%d.%d.%d.%d",
 					(int)(u8)((a>>24)&0xff),
 					(int)(u8)((a>>16)&0xff),
@@ -104,7 +104,7 @@ evdns_server_callback(struct evdns_server_request *req, void *data)
 	/* dummy; give 192.168.11.11 as an answer for all A questions,
 	 *	give foo.bar.example.com as an answer for all PTR questions. */
 	for (i = 0; i < req->nquestions; ++i) {
-		u32 ans = htonl(0xc0a80b0bUL);
+		u32 ans = sgx_htonl(0xc0a80b0bUL);
 		if (req->questions[i]->type == EVDNS_TYPE_A &&
 		    req->questions[i]->dns_question_class == EVDNS_CLASS_INET) {
 			printf(" -- replying for %s (A)\n", req->questions[i]->name);
@@ -136,7 +136,7 @@ static void
 logfn(int is_warn, const char *msg) {
 	if (!is_warn && !verbose)
 		return;
-	fprintf(stderr, "%s: %s\n", is_warn?"WARN":"INFO", msg);
+	printf("%s: %s\n", is_warn?"WARN":"INFO", msg);
 }
 
 int
@@ -147,8 +147,8 @@ main(int c, char **v) {
 	struct evdns_base *evdns_base = NULL;
 	const char *resolv_conf = NULL;
 	if (c<2) {
-		fprintf(stderr, "syntax: %s [-x] [-v] [-c resolv.conf] hostname\n", v[0]);
-		fprintf(stderr, "syntax: %s [-servertest]\n", v[0]);
+		printf("syntax: %s [-x] [-v] [-c resolv.conf] hostname\n", v[0]);
+		printf("syntax: %s [-servertest]\n", v[0]);
 		return 1;
 	}
 	idx = 1;
@@ -165,9 +165,9 @@ main(int c, char **v) {
 			if (idx + 1 < c)
 				resolv_conf = v[++idx];
 			else
-				fprintf(stderr, "-c needs an argument\n");
+				printf("-c needs an argument\n");
 		} else
-			fprintf(stderr, "Unknown option %s\n", v[idx]);
+			printf("Unknown option %s\n", v[idx]);
 		++idx;
 	}
 
@@ -185,18 +185,18 @@ main(int c, char **v) {
 	if (servertest) {
 		evutil_socket_t sock;
 		struct sockaddr_in my_addr;
-		sock = socket(PF_INET, SOCK_DGRAM, 0);
+		sock = sgx_socket(PF_INET, SOCK_DGRAM, 0);
 		if (sock == -1) {
 			perror("socket");
-			exit(1);
+			sgx_exit(1);
 		}
 		evutil_make_socket_nonblocking(sock);
 		my_addr.sin_family = AF_INET;
-		my_addr.sin_port = htons(10053);
+		my_addr.sin_port = sgx_htons(10053);
 		my_addr.sin_addr.s_addr = INADDR_ANY;
-		if (bind(sock, (struct sockaddr*)&my_addr, sizeof(my_addr))<0) {
+		if (sgx_bind(sock, (struct sockaddr*)&my_addr, sizeof(my_addr))<0) {
 			perror("bind");
-			exit(1);
+			sgx_exit(1);
 		}
 		evdns_add_server_port_with_base(event_base, sock, 0, evdns_server_callback, NULL);
 	}
@@ -212,7 +212,7 @@ main(int c, char **v) {
 			    resolv_conf ? resolv_conf : "/etc/resolv.conf");
 
 		if (res < 0) {
-			fprintf(stderr, "Couldn't configure nameservers");
+			printf("Couldn't configure nameservers");
 			return 1;
 		}
 	}
@@ -222,10 +222,10 @@ main(int c, char **v) {
 		if (reverse) {
 			struct in_addr addr;
 			if (evutil_inet_pton(AF_INET, v[idx], &addr)!=1) {
-				fprintf(stderr, "Skipping non-IP %s\n", v[idx]);
+				printf("Skipping non-IP %s\n", v[idx]);
 				continue;
 			}
-			fprintf(stderr, "resolving %s...\n",v[idx]);
+			printf("resolving %s...\n",v[idx]);
 			evdns_base_resolve_reverse(evdns_base, &addr, 0, main_callback, v[idx]);
 		} else if (use_getaddrinfo) {
 			struct evutil_addrinfo hints;
@@ -233,11 +233,11 @@ main(int c, char **v) {
 			hints.ai_family = PF_UNSPEC;
 			hints.ai_protocol = IPPROTO_TCP;
 			hints.ai_flags = EVUTIL_AI_CANONNAME;
-			fprintf(stderr, "resolving (fwd) %s...\n",v[idx]);
+			printf("resolving (fwd) %s...\n",v[idx]);
 			evdns_getaddrinfo(evdns_base, v[idx], NULL, &hints,
 			    gai_callback, v[idx]);
 		} else {
-			fprintf(stderr, "resolving (fwd) %s...\n",v[idx]);
+			printf("resolving (fwd) %s...\n",v[idx]);
 			evdns_base_resolve_ipv4(evdns_base, v[idx], 0, main_callback, v[idx]);
 		}
 	}

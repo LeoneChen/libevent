@@ -50,7 +50,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <errno.h>
+#include <sgx_errno.h>
 #include <assert.h>
 #include <ctype.h>
 
@@ -94,8 +94,8 @@ static struct timeval tcalled;
 #endif
 
 #ifdef WIN32
-#define write(fd,buf,len) send((fd),(buf),(int)(len),0)
-#define read(fd,buf,len) recv((fd),(buf),(int)(len),0)
+#define write(fd,buf,len) sgx_send((fd),(buf),(int)(len),0)
+#define read(fd,buf,len) sgx_recv((fd),(buf),(int)(len),0)
 #endif
 
 struct basic_cb_args
@@ -116,7 +116,7 @@ simple_read_cb(evutil_socket_t fd, short event, void *arg)
 	if (len) {
 		if (!called) {
 			if (event_add(arg, NULL) == -1)
-				exit(1);
+				sgx_exit(1);
 		}
 	} else if (called == 1)
 		test_ok = 1;
@@ -187,7 +187,7 @@ multiple_write_cb(evutil_socket_t fd, short event, void *arg)
 
 	len = write(fd, wbuf + woff, len);
 	if (len == -1) {
-		fprintf(stderr, "%s: write\n", __func__);
+		printf("%s: write\n", __func__);
 		if (usepersist)
 			event_del(ev);
 		return;
@@ -204,7 +204,7 @@ multiple_write_cb(evutil_socket_t fd, short event, void *arg)
 
 	if (!usepersist) {
 		if (event_add(ev, NULL) == -1)
-			exit(1);
+			sgx_exit(1);
 	}
 }
 
@@ -216,7 +216,7 @@ multiple_read_cb(evutil_socket_t fd, short event, void *arg)
 
 	len = read(fd, rbuf + roff, sizeof(rbuf) - roff);
 	if (len == -1)
-		fprintf(stderr, "%s: read\n", __func__);
+		printf("%s: read\n", __func__);
 	if (len <= 0) {
 		if (usepersist)
 			event_del(ev);
@@ -226,7 +226,7 @@ multiple_read_cb(evutil_socket_t fd, short event, void *arg)
 	roff += len;
 	if (!usepersist) {
 		if (event_add(ev, NULL) == -1)
-			exit(1);
+			sgx_exit(1);
 	}
 }
 
@@ -264,13 +264,13 @@ combined_read_cb(evutil_socket_t fd, short event, void *arg)
 
 	len = read(fd, buf, sizeof(buf));
 	if (len == -1)
-		fprintf(stderr, "%s: read\n", __func__);
+		printf("%s: read\n", __func__);
 	if (len <= 0)
 		return;
 
 	both->nread += len;
 	if (event_add(&both->ev, NULL) == -1)
-		exit(1);
+		sgx_exit(1);
 }
 
 static void
@@ -288,7 +288,7 @@ combined_write_cb(evutil_socket_t fd, short event, void *arg)
 
 	len = write(fd, buf, len);
 	if (len == -1)
-		fprintf(stderr, "%s: write\n", __func__);
+		printf("%s: write\n", __func__);
 	if (len <= 0) {
 		shutdown(fd, SHUT_WR);
 		return;
@@ -296,7 +296,7 @@ combined_write_cb(evutil_socket_t fd, short event, void *arg)
 
 	both->nread -= len;
 	if (event_add(&both->ev, NULL) == -1)
-		exit(1);
+		sgx_exit(1);
 }
 
 /* These macros used to replicate the work of the legacy test wrapper code */
@@ -324,7 +324,7 @@ test_simpleread(void)
 
 	event_set(&ev, pair[1], EV_READ, simple_read_cb, &ev);
 	if (event_add(&ev, NULL) == -1)
-		exit(1);
+		sgx_exit(1);
 	event_dispatch();
 
 	cleanup_test();
@@ -340,7 +340,7 @@ test_simplewrite(void)
 
 	event_set(&ev, pair[0], EV_WRITE, simple_write_cb, &ev);
 	if (event_add(&ev, NULL) == -1)
-		exit(1);
+		sgx_exit(1);
 	event_dispatch();
 
 	cleanup_test();
@@ -369,10 +369,10 @@ test_simpleread_multiple(void)
 
 	event_set(&one, pair[1], EV_READ, simpleread_multiple_cb, NULL);
 	if (event_add(&one, NULL) == -1)
-		exit(1);
+		sgx_exit(1);
 	event_set(&two, pair[1], EV_READ, simpleread_multiple_cb, NULL);
 	if (event_add(&two, NULL) == -1)
-		exit(1);
+		sgx_exit(1);
 	event_dispatch();
 
 	cleanup_test();
@@ -503,10 +503,10 @@ test_multiple(void)
 
 	event_set(&ev, pair[0], EV_WRITE, multiple_write_cb, &ev);
 	if (event_add(&ev, NULL) == -1)
-		exit(1);
+		sgx_exit(1);
 	event_set(&ev2, pair[1], EV_READ, multiple_read_cb, &ev2);
 	if (event_add(&ev2, NULL) == -1)
-		exit(1);
+		sgx_exit(1);
 	event_dispatch();
 
 	if (roff == woff)
@@ -532,10 +532,10 @@ test_persistent(void)
 
 	event_set(&ev, pair[0], EV_WRITE|EV_PERSIST, multiple_write_cb, &ev);
 	if (event_add(&ev, NULL) == -1)
-		exit(1);
+		sgx_exit(1);
 	event_set(&ev2, pair[1], EV_READ|EV_PERSIST, multiple_read_cb, &ev2);
 	if (event_add(&ev2, NULL) == -1)
-		exit(1);
+		sgx_exit(1);
 	event_dispatch();
 
 	if (roff == woff)
@@ -848,7 +848,7 @@ test_fork(void)
 
 	event_set(&ev, pair[1], EV_READ, simple_read_cb, &ev);
 	if (event_add(&ev, NULL) == -1)
-		exit(1);
+		sgx_exit(1);
 
 	evsignal_set(&sig_ev, SIGCHLD, child_signal_cb, &got_sigchld);
 	evsignal_add(&sig_ev, NULL);
@@ -860,8 +860,8 @@ test_fork(void)
 		TT_BLATHER(("In child, before reinit"));
 		event_base_assert_ok(current_base);
 		if (event_reinit(current_base) == -1) {
-			fprintf(stdout, "FAILED (reinit)\n");
-			exit(1);
+			printf("FAILED (reinit)\n");
+			sgx_exit(1);
 		}
 		TT_BLATHER(("After reinit"));
 		event_base_assert_ok(current_base);
@@ -878,7 +878,7 @@ test_fork(void)
 		/* we do not send an EOF; simple_read_cb requires an EOF
 		 * to set test_ok.  we just verify that the callback was
 		 * called. */
-		exit(test_ok != 0 || called != 2 ? -2 : 76);
+		sgx_exit(test_ok != 0 || called != 2 ? -2 : 76);
 	}
 
 	/* wait for the child to read the data */
@@ -890,19 +890,19 @@ test_fork(void)
 
 	TT_BLATHER(("Before waitpid"));
 	if (waitpid(pid, &status, 0) == -1) {
-		fprintf(stdout, "FAILED (fork)\n");
-		exit(1);
+		printf("FAILED (fork)\n");
+		sgx_exit(1);
 	}
 	TT_BLATHER(("After waitpid"));
 
 	if (WEXITSTATUS(status) != 76) {
-		fprintf(stdout, "FAILED (exit): %d\n", WEXITSTATUS(status));
-		exit(1);
+		printf("FAILED (exit): %d\n", WEXITSTATUS(status));
+		sgx_exit(1);
 	}
 
 	/* test that the current event loop still works */
 	if (write(pair[0], TEST1, strlen(TEST1)+1) < 0) {
-		fprintf(stderr, "%s: write\n", __func__);
+		printf("%s: write\n", __func__);
 	}
 
 	shutdown(pair[0], SHUT_WR);
@@ -910,8 +910,8 @@ test_fork(void)
 	event_dispatch();
 
 	if (!got_sigchld) {
-		fprintf(stdout, "FAILED (sigchld)\n");
-		exit(1);
+		printf("FAILED (sigchld)\n");
+		sgx_exit(1);
 	}
 
 	evsignal_del(&sig_ev);
@@ -1063,8 +1063,8 @@ test_signal_switchbase(void)
 	    event_base_set(base2, &ev2) ||
 	    event_add(&ev1, NULL) ||
 	    event_add(&ev2, NULL)) {
-		fprintf(stderr, "%s: cannot set base, add\n", __func__);
-		exit(1);
+		printf("%s: cannot set base, add\n", __func__);
+		sgx_exit(1);
 	}
 
 	tt_ptr_op(event_get_base(&ev1), ==, base1);
@@ -1151,7 +1151,7 @@ test_signal_restore(void)
 	if (sigaction(SIGUSR1, &sa, NULL) == -1)
 		goto out;
 #else
-	if (signal(SIGUSR1, signal_cb_sa) == SIG_ERR)
+	if (sgx_signal(SIGUSR1, signal_cb_sa) == SIG_ERR)
 		goto out;
 #endif
 	evsignal_set(&ev, SIGUSR1, signal_cb, &ev);
@@ -1495,10 +1495,10 @@ test_nonpersist_readd(void)
 		test_ok = 0;
 	}
 	if (test_ok != 0)
-		exit(1);
+		sgx_exit(1);
 	event_loop(EVLOOP_ONCE);
 	if (test_ok != 2)
-		exit(1);
+		sgx_exit(1);
 	/* At this point, we executed both callbacks.  Whichever one got
 	 * called first added the second, but the second then immediately got
 	 * deleted before its callback was called.  At this point, though, it
@@ -1559,22 +1559,22 @@ test_priorities_impl(int npriorities)
 
 	timeout_set(&one.ev, test_priorities_cb, &one);
 	if (event_priority_set(&one.ev, 0) == -1) {
-		fprintf(stderr, "%s: failed to set priority", __func__);
-		exit(1);
+		printf("%s: failed to set priority", __func__);
+		sgx_exit(1);
 	}
 
 	timeout_set(&two.ev, test_priorities_cb, &two);
 	if (event_priority_set(&two.ev, npriorities - 1) == -1) {
-		fprintf(stderr, "%s: failed to set priority", __func__);
-		exit(1);
+		printf("%s: failed to set priority", __func__);
+		sgx_exit(1);
 	}
 
 	evutil_timerclear(&tv);
 
 	if (event_add(&one.ev, &tv) == -1)
-		exit(1);
+		sgx_exit(1);
 	if (event_add(&two.ev, &tv) == -1)
-		exit(1);
+		sgx_exit(1);
 
 	event_dispatch();
 
@@ -1741,7 +1741,7 @@ test_want_only_once(void)
 
 	event_set(&ev, pair[1], EV_READ, read_once_cb, &ev);
 	if (event_add(&ev, NULL) == -1)
-		exit(1);
+		sgx_exit(1);
 	event_dispatch();
 
 	cleanup_test();
@@ -2368,7 +2368,7 @@ test_many_events(void *arg)
 		/* We need an event that will hit the backend, and that will
 		 * be ready immediately.  "Send a datagram" is an easy
 		 * instance of that. */
-		sock[i] = socket(AF_INET, SOCK_DGRAM, 0);
+		sock[i] = sgx_socket(AF_INET, SOCK_DGRAM, 0);
 		tt_assert(sock[i] >= 0);
 		called[i] = 0;
 		ev[i] = event_new(base, sock[i], EV_WRITE|evflags,

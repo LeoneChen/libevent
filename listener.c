@@ -37,7 +37,7 @@
 #include <ws2tcpip.h>
 #include <mswsock.h>
 #endif
-#include <errno.h>
+#include <sgx_errno.h>
 #ifdef _EVENT_HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
 #endif
@@ -168,10 +168,10 @@ evconnlistener_new(struct event_base *base,
 #endif
 
 	if (backlog > 0) {
-		if (listen(fd, backlog) < 0)
+		if (sgx_listen(fd, backlog) < 0)
 			return NULL;
 	} else if (backlog < 0) {
-		if (listen(fd, 128) < 0)
+		if (sgx_listen(fd, 128) < 0)
 			return NULL;
 	}
 
@@ -210,7 +210,7 @@ evconnlistener_new_bind(struct event_base *base, evconnlistener_cb cb,
 	if (backlog == 0)
 		return NULL;
 
-	fd = socket(family, SOCK_STREAM, 0);
+	fd = sgx_socket(family, SOCK_STREAM, 0);
 	if (fd == -1)
 		return NULL;
 
@@ -238,7 +238,7 @@ evconnlistener_new_bind(struct event_base *base, evconnlistener_cb cb,
 	}
 
 	if (sa) {
-		if (bind(fd, sa, socklen)<0) {
+		if (sgx_bind(fd, sa, socklen)<0) {
 			evutil_closesocket(fd);
 			return NULL;
 		}
@@ -393,7 +393,7 @@ listener_read_cb(evutil_socket_t fd, short what, void *p)
 #else
 		socklen_t socklen = sizeof(ss);
 #endif
-		evutil_socket_t new_fd = accept(fd, (struct sockaddr*)&ss, &socklen);
+		evutil_socket_t new_fd = sgx_accept(fd, (struct sockaddr*)&ss, &socklen);
 		if (new_fd < 0)
 			break;
 		if (socklen == 0) {
@@ -519,7 +519,7 @@ free_and_unlock_accepting_socket(struct accepting_socket *as)
 {
 	/* requires lock. */
 	if (as->s != INVALID_SOCKET)
-		closesocket(as->s);
+		sgx_closesocket(as->s);
 
 	LeaveCriticalSection(&as->lock);
 	DeleteCriticalSection(&as->lock);
@@ -552,7 +552,7 @@ start_accepting(struct accepting_socket *as)
 		evutil_make_socket_nonblocking(s);
 
 	if (event_iocp_port_associate(as->lev->port, s, 1) < 0) {
-		closesocket(s);
+		sgx_closesocket(s);
 		return -1;
 	}
 
@@ -586,7 +586,7 @@ stop_accepting(struct accepting_socket *as)
 	/* requires lock. */
 	SOCKET s = as->s;
 	as->s = INVALID_SOCKET;
-	closesocket(s);
+	sgx_closesocket(s);
 }
 
 static void
@@ -813,13 +813,13 @@ evconnlistener_new_async(struct event_base *base,
 
 	/* XXXX duplicate code */
 	if (backlog > 0) {
-		if (listen(fd, backlog) < 0)
+		if (sgx_listen(fd, backlog) < 0)
 			goto err;
 	} else if (backlog < 0) {
-		if (listen(fd, 128) < 0)
+		if (sgx_listen(fd, 128) < 0)
 			goto err;
 	}
-	if (getsockname(fd, (struct sockaddr*)&ss, &socklen)) {
+	if (sgx_getsockname(fd, (struct sockaddr*)&ss, &socklen)) {
 		event_sock_warn(fd, "getsockname");
 		goto err;
 	}

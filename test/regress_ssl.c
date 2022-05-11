@@ -410,7 +410,7 @@ regress_bufferevent_openssl_connect(void *arg)
 
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
-	sin.sin_addr.s_addr = htonl(0x7f000001);
+	sin.sin_addr.s_addr = sgx_htonl(0x7f000001);
 
 	memset(&ss, 0, sizeof(ss));
 	slen = sizeof(ss);
@@ -431,7 +431,7 @@ regress_bufferevent_openssl_connect(void *arg)
 	bufferevent_setcb(bev, respond_to_number, NULL, eventcb,
 	    (void*)"client");
 
-	tt_assert(getsockname(evconnlistener_get_fd(listener),
+	tt_assert(sgx_getsockname(evconnlistener_get_fd(listener),
 		(struct sockaddr*)&ss, &slen) == 0);
 	tt_assert(slen == sizeof(struct sockaddr_in));
 	tt_int_op(((struct sockaddr*)&ss)->sa_family, ==, AF_INET);

@@ -55,7 +55,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <errno.h>
+#include <sgx_errno.h>
 
 #include "event2/dns.h"
 #include "event2/dns_struct.h"
@@ -80,12 +80,12 @@ regress_get_socket_port(evutil_socket_t fd)
 {
 	struct sockaddr_storage ss;
 	ev_socklen_t socklen = sizeof(ss);
-	if (getsockname(fd, (struct sockaddr*)&ss, &socklen) != 0)
+	if (sgx_getsockname(fd, (struct sockaddr*)&ss, &socklen) != 0)
 		return -1;
 	if (ss.ss_family == AF_INET)
-		return ntohs( ((struct sockaddr_in*)&ss)->sin_port);
+		return sgx_ntohs( ((struct sockaddr_in*)&ss)->sin_port);
 	else if (ss.ss_family == AF_INET6)
-		return ntohs( ((struct sockaddr_in6*)&ss)->sin6_port);
+		return sgx_ntohs( ((struct sockaddr_in6*)&ss)->sin6_port);
 	else
 		return -1;
 }
@@ -101,7 +101,7 @@ regress_get_dnsserver(struct event_base *base,
 	evutil_socket_t sock;
 	struct sockaddr_in my_addr;
 
-	sock = socket(AF_INET, SOCK_DGRAM, 0);
+	sock = sgx_socket(AF_INET, SOCK_DGRAM, 0);
 	if (sock < 0) {
 		tt_abort_perror("socket");
 	}
@@ -110,9 +110,10 @@ regress_get_dnsserver(struct event_base *base,
 
 	memset(&my_addr, 0, sizeof(my_addr));
 	my_addr.sin_family = AF_INET;
-	my_addr.sin_port = htons(*portnum);
-	my_addr.sin_addr.s_addr = htonl(0x7f000001UL);
-	if (bind(sock, (struct sockaddr*)&my_addr, sizeof(my_addr)) < 0) {
+	my_addr.sin_port = sgx_htons(*portnum);
+	my_addr.sin_addr.s_addr = sgx_htonl(0x7f000001UL);
+
+	if (sgx_bind(sock, (struct sockaddr*)&my_addr, sizeof(my_addr)) < 0) {
 		evutil_closesocket(sock);
 		tt_abort_perror("bind");
 	}
@@ -216,5 +217,5 @@ regress_get_listener_addr(struct evconnlistener *lev,
 	evutil_socket_t s = evconnlistener_get_fd(lev);
 	if (s <= 0)
 		return -1;
-	return getsockname(s, sa, socklen);
+	return sgx_getsockname(s, sa, socklen);
 }

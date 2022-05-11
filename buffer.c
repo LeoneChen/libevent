@@ -2069,7 +2069,7 @@ get_n_bytes_readable_on_socket(evutil_socket_t fd)
 {
 #if defined(FIONREAD) && defined(WIN32)
 	unsigned long lng = EVBUFFER_MAX_READ;
-	if (ioctlsocket(fd, FIONREAD, &lng) < 0)
+	if (sgx_ioctlsocket(fd, FIONREAD, &lng) < 0)
 		return -1;
 	/* Can overflow, but mostly harmlessly. XXXX */
 	return (int)lng;
@@ -2168,7 +2168,7 @@ evbuffer_read(struct evbuffer *buf, evutil_socket_t fd, int howmuch)
 #ifndef WIN32
 	n = read(fd, p, howmuch);
 #else
-	n = recv(fd, p, howmuch, 0);
+	n = sgx_recv(fd, p, howmuch, 0);
 #endif
 #endif /* USE_IOVEC_IMPL */
 
@@ -2401,7 +2401,7 @@ evbuffer_write_atmost(struct evbuffer *buffer, evutil_socket_t fd,
 		 * the WSARecv code above works. */
 		void *p = evbuffer_pullup(buffer, howmuch);
 		EVUTIL_ASSERT(p || !howmuch);
-		n = send(fd, p, howmuch, 0);
+		n = sgx_send(fd, p, howmuch, 0);
 #else
 		void *p = evbuffer_pullup(buffer, howmuch);
 		EVUTIL_ASSERT(p || !howmuch);
@@ -2925,7 +2925,7 @@ evbuffer_add_file(struct evbuffer *outbuf, int fd,
 			evbuffer_free(tmp);
 
 #ifdef WIN32
-#define close _close
+#define close sgx_close
 #endif
 			close(fd);
 		}

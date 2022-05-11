@@ -34,7 +34,7 @@
 #include <sys/time.h>
 #endif
 
-#include <errno.h>
+#include <sgx_errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -370,7 +370,7 @@ bufferevent_socket_connect(struct bufferevent *bev,
 	if (fd < 0) {
 		if (!sa)
 			goto done;
-		fd = socket(sa->sa_family, SOCK_STREAM, 0);
+		fd = sgx_socket(sa->sa_family, SOCK_STREAM, 0);
 		if (fd < 0)
 			goto done;
 		if (evutil_make_socket_nonblocking(fd)<0)

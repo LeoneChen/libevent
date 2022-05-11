@@ -1181,7 +1181,6 @@ void event_set_mem_functions(
 #define EVENT_SET_MEM_FUNCTIONS_IMPLEMENTED
 #endif
 
-void event_base_dump_events(struct event_base *, FILE *);
 
 /** Sets 'tv' to the current time (as returned by gettimeofday()),
     looking at the cached value in 'base' if possible, and calling

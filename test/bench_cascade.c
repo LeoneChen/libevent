@@ -47,7 +47,7 @@
 #ifdef _EVENT_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
-#include <errno.h>
+#include <sgx_errno.h>
 
 #include <event.h>
 #include <evutil.h>
@@ -69,9 +69,9 @@ read_cb(evutil_socket_t fd, short which, void *arg)
 	char ch;
 	evutil_socket_t sock = (evutil_socket_t)(ev_intptr_t)arg;
 
-	recv(fd, &ch, sizeof(ch), 0);
+	sgx_recv(fd, &ch, sizeof(ch), 0);
 	if (sock >= 0) {
-		if (send(sock, "e", 1, 0) < 0)
+		if (sgx_send(sock, "e", 1, 0) < 0)
 			perror("send");
 	}
 	fired++;
@@ -89,13 +89,13 @@ run_once(int num_pipes)
 
 	if (events == NULL || pipes == NULL) {
 		perror("malloc");
-		exit(1);
+		sgx_exit(1);
 	}
 
 	for (cp = pipes, i = 0; i < num_pipes; i++, cp += 2) {
 		if (evutil_socketpair(AF_UNIX, SOCK_STREAM, 0, cp) == -1) {
 			perror("socketpair");
-			exit(1);
+			sgx_exit(1);
 		}
 	}
 
@@ -116,7 +116,7 @@ run_once(int num_pipes)
 	fired = 0;
 
 	/* kick everything off with a single write */
-	if (send(pipes[1], "e", 1, 0) < 0)
+	if (sgx_send(pipes[1], "e", 1, 0) < 0)
 		perror("send");
 
 	event_dispatch();
@@ -152,8 +152,8 @@ main(int argc, char **argv)
 			num_pipes = atoi(optarg);
 			break;
 		default:
-			fprintf(stderr, "Illegal argument \"%c\"\n", c);
-			exit(1);
+			printf("Illegal argument \"%c\"\n", c);
+			sgx_exit(1);
 		}
 	}
 
@@ -161,7 +161,7 @@ main(int argc, char **argv)
 	rl.rlim_cur = rl.rlim_max = num_pipes * 2 + 50;
 	if (setrlimit(RLIMIT_NOFILE, &rl) == -1) {
 		perror("setrlimit");
-		exit(1);
+		sgx_exit(1);
 	}
 #endif
 
@@ -170,10 +170,10 @@ main(int argc, char **argv)
 	for (i = 0; i < 25; i++) {
 		tv = run_once(num_pipes);
 		if (tv == NULL)
-			exit(1);
-		fprintf(stdout, "%ld\n",
+			sgx_exit(1);
+		printf("%ld\n",
 			tv->tv_sec * 1000000L + tv->tv_usec);
 	}
 
-	exit(0);
+	sgx_exit(0);
 }

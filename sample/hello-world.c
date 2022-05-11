@@ -8,7 +8,7 @@
 
 
 #include <string.h>
-#include <errno.h>
+#include <sgx_errno.h>
 #include <stdio.h>
 #include <signal.h>
 #ifndef WIN32
@@ -50,13 +50,13 @@ main(int argc, char **argv)
 
 	base = event_base_new();
 	if (!base) {
-		fprintf(stderr, "Could not initialize libevent!\n");
+		printf("Could not initialize libevent!\n");
 		return 1;
 	}
 
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_family = AF_INET;
-	sin.sin_port = htons(PORT);
+	sin.sin_port = sgx_htons(PORT);
 
 	listener = evconnlistener_new_bind(base, listener_cb, (void *)base,
 	    LEV_OPT_REUSEABLE|LEV_OPT_CLOSE_ON_FREE, -1,
@@ -64,14 +64,14 @@ main(int argc, char **argv)
 	    sizeof(sin));
 
 	if (!listener) {
-		fprintf(stderr, "Could not create a listener!\n");
+		printf("Could not create a listener!\n");
 		return 1;
 	}
 
 	signal_event = evsignal_new(base, SIGINT, signal_cb, (void *)base);
 
 	if (!signal_event || event_add(signal_event, NULL)<0) {
-		fprintf(stderr, "Could not create/add a signal event!\n");
+		printf("Could not create/add a signal event!\n");
 		return 1;
 	}
 
@@ -94,7 +94,7 @@ listener_cb(struct evconnlistener *listener, evutil_socket_t fd,
 
 	bev = bufferevent_socket_new(base, fd, BEV_OPT_CLOSE_ON_FREE);
 	if (!bev) {
-		fprintf(stderr, "Error constructing bufferevent!");
+		printf("Error constructing bufferevent!");
 		event_base_loopbreak(base);
 		return;
 	}

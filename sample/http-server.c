@@ -51,7 +51,7 @@
 #define stat _stat
 #define fstat _fstat
 #define open _open
-#define close _close
+#define close sgx_close
 #define O_RDONLY _O_RDONLY
 #endif
 
@@ -310,7 +310,7 @@ done:
 static void
 syntax(void)
 {
-	fprintf(stdout, "Syntax: http-server <docroot>\n");
+	printf("Syntax: http-server <docroot>\n");
 }
 
 int
@@ -325,7 +325,7 @@ main(int argc, char **argv)
 	WSADATA WSAData;
 	WSAStartup(0x101, &WSAData);
 #else
-	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
+	if (sgx_signal(SIGPIPE, SIG_IGN) == SIG_ERR)
 		return (1);
 #endif
 	if (argc < 2) {
@@ -335,14 +335,14 @@ main(int argc, char **argv)
 
 	base = event_base_new();
 	if (!base) {
-		fprintf(stderr, "Couldn't create an event_base: exiting\n");
+		printf("Couldn't create an event_base: exiting\n");
 		return 1;
 	}
 
 	/* Create a new evhttp object to handle requests. */
 	http = evhttp_new(base);
 	if (!http) {
-		fprintf(stderr, "couldn't create evhttp. Exiting.\n");
+		printf("couldn't create evhttp. Exiting.\n");
 		return 1;
 	}
 
@@ -356,7 +356,7 @@ main(int argc, char **argv)
 	/* Now we tell the evhttp what port to listen on */
 	handle = evhttp_bind_socket_with_handle(http, "0.0.0.0", port);
 	if (!handle) {
-		fprintf(stderr, "couldn't bind to port %d. Exiting.\n",
+		printf("couldn't bind to port %d. Exiting.\n",
 		    (int)port);
 		return 1;
 	}
@@ -372,18 +372,18 @@ main(int argc, char **argv)
 		int got_port = -1;
 		fd = evhttp_bound_socket_get_fd(handle);
 		memset(&ss, 0, sizeof(ss));
-		if (getsockname(fd, (struct sockaddr *)&ss, &socklen)) {
+		if (sgx_getsockname(fd, (struct sockaddr *)&ss, &socklen)) {
 			perror("getsockname() failed");
 			return 1;
 		}
 		if (ss.ss_family == AF_INET) {
-			got_port = ntohs(((struct sockaddr_in*)&ss)->sin_port);
+			got_port = sgx_ntohs(((struct sockaddr_in*)&ss)->sin_port);
 			inaddr = &((struct sockaddr_in*)&ss)->sin_addr;
 		} else if (ss.ss_family == AF_INET6) {
-			got_port = ntohs(((struct sockaddr_in6*)&ss)->sin6_port);
+			got_port = sgx_ntohs(((struct sockaddr_in6*)&ss)->sin6_port);
 			inaddr = &((struct sockaddr_in6*)&ss)->sin6_addr;
 		} else {
-			fprintf(stderr, "Weird address family %d\n",
+			printf("Weird address family %d\n",
 			    ss.ss_family);
 			return 1;
 		}
@@ -394,7 +394,7 @@ main(int argc, char **argv)
 			evutil_snprintf(uri_root, sizeof(uri_root),
 			    "http://%s:%d",addr,got_port);
 		} else {
-			fprintf(stderr, "evutil_inet_ntop failed\n");
+			printf("evutil_inet_ntop failed\n");
 			return 1;
 		}
 	}

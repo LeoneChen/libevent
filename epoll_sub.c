@@ -31,7 +31,7 @@
 #include <sys/syscall.h>
 #include <sys/epoll.h>
 #include <unistd.h>
-#include <errno.h>
+#include <sgx_errno.h>
 
 int
 epoll_create(int size)

@@ -151,8 +151,8 @@ _testcase_run_forked(const struct testgroup_t *group,
 	}
 	WaitForSingleObject(info.hProcess, INFINITE);
 	GetExitCodeProcess(info.hProcess, &exitcode);
-	CloseHandle(info.hProcess);
-	CloseHandle(info.hThread);
+	sgx_CloseHandle(info.hProcess);
+	sgx_CloseHandle(info.hThread);
 	if (exitcode == 0)
 		return OK;
 	else if (exitcode == MAGIC_EXITCODE)
@@ -184,9 +184,9 @@ _testcase_run_forked(const struct testgroup_t *group,
 		write_r = (int)write(outcome_pipe[1], b, 1);
 		if (write_r != 1) {
 			perror("write outcome to pipe");
-			exit(1);
+			sgx_exit(1);
 		}
-		exit(0);
+		sgx_exit(0);
 		return FAIL; /* unreachable */
 	} else {
 		/* parent */
@@ -294,7 +294,7 @@ usage(struct testgroup_t *groups, int list_groups)
 		puts("Known tests are:");
 		_tinytest_set_flag(groups, "..", 0);
 	}
-	exit(0);
+	sgx_exit(0);
 }
 
 int

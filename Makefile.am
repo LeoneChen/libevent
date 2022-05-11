@@ -127,7 +127,7 @@ else
 noinst_LTLIBRARIES =  $(LIBEVENT_LIBS_LA)
 endif
 
-SUBDIRS = . include sample test
+SUBDIRS = . include # sample test
 
 if BUILD_WIN32
 
@@ -232,7 +232,7 @@ else
 noinst_HEADERS += $(EVENT1_HDRS)
 endif
 
-AM_CPPFLAGS = -I$(srcdir)/compat -I$(srcdir)/include -I./include $(SYS_INCLUDES)
+AM_CPPFLAGS = -I../OpenSSL_SGX/include -I$(srcdir)/compat -I$(srcdir)/include -I./include $(SYS_INCLUDES)
 
 verify: check
 

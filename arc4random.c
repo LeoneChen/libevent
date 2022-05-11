@@ -80,7 +80,7 @@ struct arc4_stream {
 };
 
 #ifdef WIN32
-#define getpid _getpid
+#define getpid sgx_getpid
 #define pid_t int
 #endif
 
@@ -128,7 +128,7 @@ read_all(int fd, unsigned char *buf, size_t count)
 	ssize_t result;
 
 	while (numread < count) {
-		result = read(fd, buf+numread, count-numread);
+		result = sgx_read(fd, buf+numread, count-numread);
 		if (result<0)
 			return -1;
 		else if (result == 0)
@@ -151,14 +151,14 @@ arc4_seed_win32(void)
 	unsigned char buf[ADD_ENTROPY];
 
 	if (!provider_set) {
-		if (!CryptAcquireContext(&provider, NULL, NULL, PROV_RSA_FULL,
+		if (!sgx_CryptAcquireContext(&provider, NULL, NULL, PROV_RSA_FULL,
 		    CRYPT_VERIFYCONTEXT)) {
-			if (GetLastError() != (DWORD)NTE_BAD_KEYSET)
+			if (sgx_GetLastError() != (DWORD)NTE_BAD_KEYSET)
 				return -1;
 		}
 		provider_set = 1;
 	}
-	if (!CryptGenRandom(provider, sizeof(buf), buf))
+	if (!sgx_CryptGenRandom(provider, sizeof(buf), buf))
 		return -1;
 	arc4_addrandom(buf, sizeof(buf));
 	evutil_memclear_(buf, sizeof(buf));
@@ -188,7 +188,7 @@ arc4_seed_sysctl_linux(void)
 	for (len = 0; len < sizeof(buf); len += n) {
 		n = sizeof(buf) - len;
 
-		if (0 != sysctl(mib, 3, &buf[len], &n, NULL, 0))
+		if (0 != sgx_sysctl(mib, 3, &buf[len], len, &n, NULL, 0))
 			return -1;
 	}
 	/* make sure that the buffer actually got set. */
@@ -263,8 +263,8 @@ arc4_seed_proc_sys_kernel_random_uuid(void)
 		fd = evutil_open_closeonexec("/proc/sys/kernel/random/uuid", O_RDONLY, 0);
 		if (fd < 0)
 			return -1;
-		n = read(fd, buf, sizeof(buf));
-		close(fd);
+		n = sgx_read(fd, buf, sizeof(buf));
+		sgx_close(fd);
 		if (n<=0)
 			return -1;
 		memset(entropy, 0, sizeof(entropy));
@@ -305,7 +305,7 @@ static int arc4_seed_urandom_helper_(const char *fname)
 	if (fd<0)
 		return -1;
 	n = read_all(fd, buf, sizeof(buf));
-	close(fd);
+	sgx_close(fd);
 	if (n != sizeof(buf))
 		return -1;
 	arc4_addrandom(buf, sizeof(buf));
@@ -412,7 +412,7 @@ arc4_stir(void)
 static void
 arc4_stir_if_needed(void)
 {
-	pid_t pid = getpid();
+	pid_t pid = sgx_getpid();
 
 	if (arc4_count <= 0 || !rs_initialized || arc4_stir_pid != pid)
 	{

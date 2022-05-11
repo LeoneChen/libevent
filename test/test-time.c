@@ -36,7 +36,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 #endif
-#include <errno.h>
+#include <sgx_errno.h>
 
 #include "event2/event.h"
 #include "event2/event_compat.h"

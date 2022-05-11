@@ -40,7 +40,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <errno.h>
+#include <sgx_errno.h>
 
 #include "event2/event.h"
 #include "event2/buffer.h"
@@ -97,7 +97,7 @@ main(int argc, char **argv)
 	WSADATA WSAData;
 	WSAStartup(0x101, &WSAData);
 #else
-	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
+	if (sgx_signal(SIGPIPE, SIG_IGN) == SIG_ERR)
 		return (1);
 #endif
 
@@ -108,31 +108,31 @@ main(int argc, char **argv)
 		c = argv[i][1];
 
 		if ((c == 'p' || c == 'l') && i + 1 >= argc) {
-			fprintf(stderr, "-%c requires argument.\n", c);
-			exit(1);
+			printf("-%c requires argument.\n", c);
+			sgx_exit(1);
 		}
 
 		switch (c) {
 		case 'p':
 			if (i+1 >= argc || !argv[i+1]) {
-				fprintf(stderr, "Missing port\n");
-				exit(1);
+				printf("Missing port\n");
+				sgx_exit(1);
 			}
 			port = (int)strtol(argv[i+1], &endptr, 10);
 			if (*endptr != '\0') {
-				fprintf(stderr, "Bad port\n");
-				exit(1);
+				printf("Bad port\n");
+				sgx_exit(1);
 			}
 			break;
 		case 'l':
 			if (i+1 >= argc || !argv[i+1]) {
-				fprintf(stderr, "Missing content length\n");
-				exit(1);
+				printf("Missing content length\n");
+				sgx_exit(1);
 			}
 			content_len = (size_t)strtol(argv[i+1], &endptr, 10);
 			if (*endptr != '\0' || content_len == 0) {
-				fprintf(stderr, "Bad content length\n");
-				exit(1);
+				printf("Bad content length\n");
+				sgx_exit(1);
 			}
 			break;
 #ifdef WIN32
@@ -143,14 +143,14 @@ main(int argc, char **argv)
 			break;
 #endif
 		default:
-			fprintf(stderr, "Illegal argument \"%c\"\n", c);
-			exit(1);
+			printf("Illegal argument \"%c\"\n", c);
+			sgx_exit(1);
 		}
 	}
 
 	base = event_base_new_with_config(cfg);
 	if (!base) {
-		fprintf(stderr, "creating event_base failed. Exiting.\n");
+		printf("creating event_base failed. Exiting.\n");
 		return 1;
 	}
 
@@ -158,8 +158,8 @@ main(int argc, char **argv)
 
 	content = malloc(content_len);
 	if (content == NULL) {
-		fprintf(stderr, "Cannot allocate content\n");
-		exit(1);
+		printf("Cannot allocate content\n");
+		sgx_exit(1);
 	} else {
 		int i = 0;
 		for (i = 0; i < (int)content_len; ++i)
@@ -167,14 +167,14 @@ main(int argc, char **argv)
 	}
 
 	evhttp_set_cb(http, "/ind", http_basic_cb, NULL);
-	fprintf(stderr, "/ind - basic content (memory copy)\n");
+	printf("/ind - basic content (memory copy)\n");
 
 #ifdef _EVENT2_EVENT_H_
 	evhttp_set_cb(http, "/ref", http_ref_cb, NULL);
-	fprintf(stderr, "/ref - basic content (reference)\n");
+	printf("/ref - basic content (reference)\n");
 #endif
 
-	fprintf(stderr, "Serving %d bytes on port %d using %s\n",
+	printf("Serving %d bytes on port %d using %s\n",
 	    (int)content_len, port,
 	    use_iocp? "IOCP" : event_base_get_method(base));
 

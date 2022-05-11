@@ -32,7 +32,7 @@
 #include <sys/time.h>
 #endif
 
-#include <errno.h>
+#include <sgx_errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -537,7 +537,7 @@ bufferevent_async_new(struct event_base *base,
 		return NULL;
 
 	if (fd >= 0 && event_iocp_port_associate(iocp, fd, 1)<0) {
-		int err = GetLastError();
+		int err = sgx_GetLastError();
 		/* We may have alrady associated this fd with a port.
 		 * Let's hope it's this port, and that the error code
 		 * for doing this neer changes. */
@@ -633,7 +633,7 @@ bufferevent_async_connect(struct bufferevent *bev, evutil_socket_t fd,
 		/* Well, the user will have to bind() */
 		return -1;
 	}
-	if (bind(fd, (struct sockaddr *)&ss, sizeof(ss)) < 0 &&
+	if (sgx_bind(fd, (struct sockaddr *)&ss, sizeof(ss)) < 0 &&
 	    WSAGetLastError() != WSAEINVAL)
 		return -1;
 
@@ -676,7 +676,7 @@ be_async_ctrl(struct bufferevent *bev, enum bufferevent_ctrl_op op,
 		evutil_socket_t fd = _evbuffer_overlapped_get_fd(bev->input);
 		if (fd != (evutil_socket_t)INVALID_SOCKET &&
 		    (bev_a->bev.options & BEV_OPT_CLOSE_ON_FREE)) {
-			closesocket(fd);
+			sgx_closesocket(fd);
 		}
 		bev_a->ok = 0;
 		return 0;

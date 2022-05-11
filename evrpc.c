@@ -46,7 +46,7 @@
 #ifndef WIN32
 #include <unistd.h>
 #endif
-#include <errno.h>
+#include <sgx_errno.h>
 #include <signal.h>
 #include <string.h>
 

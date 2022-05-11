@@ -51,7 +51,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <errno.h>
+#include <sgx_errno.h>
 #include <assert.h>
 
 #include "event2/buffer.h"
@@ -169,8 +169,8 @@ rpc_postrequest_failure(struct evhttp_request *req, void *arg)
 {
 	if (req->response_code != HTTP_SERVUNAVAIL) {
 
-		fprintf(stderr, "FAILED (response code)\n");
-		exit(1);
+		printf("FAILED (response code)\n");
+		sgx_exit(1);
 	}
 
 	test_ok = 1;
@@ -233,15 +233,15 @@ rpc_postrequest_done(struct evhttp_request *req, void *arg)
 	struct kill* kill_reply = NULL;
 
 	if (req->response_code != HTTP_OK) {
-		fprintf(stderr, "FAILED (response code)\n");
-		exit(1);
+		printf("FAILED (response code)\n");
+		sgx_exit(1);
 	}
 
 	kill_reply = kill_new();
 
 	if ((kill_unmarshal(kill_reply, req->input_buffer)) == -1) {
-		fprintf(stderr, "FAILED (unmarshal)\n");
-		exit(1);
+		printf("FAILED (unmarshal)\n");
+		sgx_exit(1);
 	}
 
 	kill_free(kill_reply);
@@ -272,8 +272,8 @@ rpc_basic_message(void)
 
 	req = evhttp_request_new(rpc_postrequest_done, NULL);
 	if (req == NULL) {
-		fprintf(stdout, "FAILED\n");
-		exit(1);
+		printf("FAILED\n");
+		sgx_exit(1);
 	}
 
 	/* Add the information that we care about */
@@ -289,8 +289,8 @@ rpc_basic_message(void)
 	if (evhttp_make_request(evcon, req,
 		EVHTTP_REQ_POST,
 		"/.rpc.Message") == -1) {
-		fprintf(stdout, "FAILED\n");
-		exit(1);
+		printf("FAILED\n");
+		sgx_exit(1);
 	}
 
 	test_ok = 0;
@@ -341,11 +341,11 @@ GotKillCb(struct evrpc_status *status,
 		goto done;
 
 	if (EVTAG_GET(kill, weapon, &weapon) == -1) {
-		fprintf(stderr, "get weapon\n");
+		printf("get weapon\n");
 		goto done;
 	}
 	if (EVTAG_GET(kill, action, &action) == -1) {
-		fprintf(stderr, "get action\n");
+		printf("get action\n");
 		goto done;
 	}
 
@@ -372,11 +372,11 @@ GotKillCbTwo(struct evrpc_status *status,
 		goto done;
 
 	if (EVTAG_GET(kill, weapon, &weapon) == -1) {
-		fprintf(stderr, "get weapon\n");
+		printf("get weapon\n");
 		goto done;
 	}
 	if (EVTAG_GET(kill, action, &action) == -1) {
-		fprintf(stderr, "get action\n");
+		printf("get action\n");
 		goto done;
 	}
 

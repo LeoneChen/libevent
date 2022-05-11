@@ -37,7 +37,7 @@
 #endif
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
+#include <sgx_errno.h>
 
 #include "event2/event.h"
 #include "event2/bufferevent.h"
@@ -137,14 +137,14 @@ launch_request(void)
 	++total_n_launched;
 
 	sin.sin_family = AF_INET;
-	sin.sin_addr.s_addr = htonl(0x7f000001);
-	sin.sin_port = htons(8080);
+	sin.sin_addr.s_addr = sgx_htonl(0x7f000001);
+	sin.sin_port = sgx_htons(8080);
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0)
 		return -1;
 	if (evutil_make_socket_nonblocking(sock) < 0)
 		return -1;
 	frob_socket(sock);
-	if (connect(sock, (struct sockaddr*)&sin, sizeof(sin)) < 0) {
+	if (sgx_connect(sock, (struct sockaddr*)&sin, sizeof(sin)) < 0) {
 		int e = errno;
 		if (! EVUTIL_ERR_CONNECT_RETRIABLE(e)) {
 			return -1;

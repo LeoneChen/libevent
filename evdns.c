@@ -65,7 +65,7 @@
 #endif
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
+#include <sgx_errno.h>
 #ifdef _EVENT_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -637,7 +637,7 @@ nameserver_up(struct nameserver *const ns)
 static void
 request_trans_id_set(struct request *const req, const u16 trans_id) {
 	req->trans_id = trans_id;
-	*((u16 *) req->request) = htons(trans_id);
+	*((u16 *) req->request) = sgx_htons(trans_id);
 }
 
 /* Called to remove a request from a list and dealloc it. */
@@ -945,8 +945,8 @@ name_parse(u8 *packet, int length, int *idx, char *name_out, int name_out_len) {
 	int name_end = -1;
 	int j = *idx;
 	int ptr_count = 0;
-#define GET32(x) do { if (j + 4 > length) goto err; memcpy(&_t32, packet + j, 4); j += 4; x = ntohl(_t32); } while (0)
-#define GET16(x) do { if (j + 2 > length) goto err; memcpy(&_t, packet + j, 2); j += 2; x = ntohs(_t); } while (0)
+#define GET32(x) do { if (j + 4 > length) goto err; memcpy(&_t32, packet + j, 4); j += 4; x = sgx_ntohl(_t32); } while (0)
+#define GET16(x) do { if (j + 2 > length) goto err; memcpy(&_t, packet + j, 2); j += 2; x = sgx_ntohs(_t); } while (0)
 #define GET8(x) do { if (j >= length) goto err; x = packet[j++]; } while (0)
 
 	char *cp = name_out;
@@ -1362,7 +1362,7 @@ nameserver_read(struct nameserver *ns) {
 	ASSERT_LOCKED(ns->base);
 
 	for (;;) {
-		const int r = recvfrom(ns->socket, (void*)packet,
+		const int r = sgx_recvfrom(ns->socket, (void*)packet,
 		    sizeof(packet), 0,
 		    (struct sockaddr*)&ss, &addrlen);
 		if (r < 0) {
@@ -1400,7 +1400,7 @@ server_port_read(struct evdns_server_port *s) {
 
 	for (;;) {
 		addrlen = sizeof(struct sockaddr_storage);
-		r = recvfrom(s->socket, (void*)packet, sizeof(packet), 0,
+		r = sgx_recvfrom(s->socket, (void*)packet, sizeof(packet), 0,
 					 (struct sockaddr*) &addr, &addrlen);
 		if (r < 0) {
 			int err = evutil_socket_geterror(s->socket);
@@ -1422,7 +1422,7 @@ server_port_flush(struct evdns_server_port *port)
 	struct server_request *req = port->pending_replies;
 	ASSERT_LOCKED(port);
 	while (req) {
-		int r = sendto(port->socket, req->response, (int)req->response_len, 0,
+		int r = sgx_sendto(port->socket, req->response, (int)req->response_len, 0,
 			   (struct sockaddr*) &req->addr, (ev_socklen_t)req->addrlen);
 		if (r < 0) {
 			int err = evutil_socket_geterror(port->socket);
@@ -1593,14 +1593,14 @@ dnsname_to_labels(u8 *const buf, size_t buf_len, off_t j,
 #define APPEND16(x) do {						\
 		if (j + 2 > (off_t)buf_len)				\
 			goto overflow;					\
-		_t = htons(x);						\
+		_t = sgx_htons(x);						\
 		memcpy(buf + j, &_t, 2);				\
 		j += 2;							\
 	} while (0)
 #define APPEND32(x) do {						\
 		if (j + 4 > (off_t)buf_len)				\
 			goto overflow;					\
-		_t32 = htonl(x);					\
+		_t32 = sgx_htonl(x);					\
 		memcpy(buf + j, &_t32, 4);				\
 		j += 4;							\
 	} while (0)
@@ -1842,7 +1842,7 @@ evdns_server_request_add_ptr_reply(struct evdns_server_request *req, struct in_a
 	else if (!in && !inaddr_name)
 		return -1;
 	if (in) {
-		a = ntohl(in->s_addr);
+		a = sgx_ntohl(in->s_addr);
 		evutil_snprintf(buf, sizeof(buf), "%d.%d.%d.%d.in-addr.arpa",
 				(int)(u8)((a	)&0xff),
 				(int)(u8)((a>>8 )&0xff),
@@ -1938,7 +1938,7 @@ evdns_server_request_format_response(struct server_request *req, int err)
 				if (r < 0)
 					goto overflow;
 				j = r;
-				_t = htons( (short) (j-name_start) );
+				_t = sgx_htons( (short) (j-name_start) );
 				memcpy(buf+len_idx, &_t, 2);
 			} else {
 				APPEND16(item->datalen);
@@ -1984,7 +1984,7 @@ evdns_server_request_respond(struct evdns_server_request *_req, int err)
 			goto done;
 	}
 
-	r = sendto(port->socket, req->response, (int)req->response_len, 0,
+	r = sgx_sendto(port->socket, req->response, (int)req->response_len, 0,
 			   (struct sockaddr*) &req->addr, (ev_socklen_t)req->addrlen);
 	if (r<0) {
 		int sock_err = evutil_socket_geterror(port->socket);
@@ -2191,7 +2191,7 @@ evdns_request_transmit_to(struct request *req, struct nameserver *server) {
 	int r;
 	ASSERT_LOCKED(req->base);
 	ASSERT_VALID_REQUEST(req);
-	r = sendto(server->socket, (void*)req->request, req->request_len, 0,
+	r = sgx_sendto(server->socket, (void*)req->request, req->request_len, 0,
 	    (struct sockaddr *)&server->address, server->addrlen);
 	if (r < 0) {
 		int err = evutil_socket_geterror(server->socket);
@@ -2488,14 +2488,14 @@ _evdns_nameserver_add_impl(struct evdns_base *base, const struct sockaddr *addre
 
 	evtimer_assign(&ns->timeout_event, ns->base->event_base, nameserver_prod_callback, ns);
 
-	ns->socket = socket(address->sa_family, SOCK_DGRAM, 0);
+	ns->socket = sgx_socket(address->sa_family, SOCK_DGRAM, 0);
 	if (ns->socket < 0) { err = 1; goto out1; }
 	evutil_make_socket_closeonexec(ns->socket);
 	evutil_make_socket_nonblocking(ns->socket);
 
 	if (base->global_outgoing_addrlen &&
 	    !evutil_sockaddr_is_loopback(address)) {
-		if (bind(ns->socket,
+		if (sgx_bind(ns->socket,
 			(struct sockaddr*)&base->global_outgoing_address,
 			base->global_outgoing_addrlen) < 0) {
 			log(EVDNS_LOG_WARN,"Couldn't bind to outgoing address");
@@ -2549,7 +2549,7 @@ evdns_base_nameserver_add(struct evdns_base *base, unsigned long int address)
 	int res;
 	memset(&sin, 0, sizeof(sin));
 	sin.sin_addr.s_addr = address;
-	sin.sin_port = htons(53);
+	sin.sin_port = sgx_htons(53);
 	sin.sin_family = AF_INET;
 	EVDNS_LOCK(base);
 	res = _evdns_nameserver_add_impl(base, (struct sockaddr*)&sin, sizeof(sin));
@@ -2568,9 +2568,9 @@ static void
 sockaddr_setport(struct sockaddr *sa, ev_uint16_t port)
 {
 	if (sa->sa_family == AF_INET) {
-		((struct sockaddr_in *)sa)->sin_port = htons(port);
+		((struct sockaddr_in *)sa)->sin_port = sgx_htons(port);
 	} else if (sa->sa_family == AF_INET6) {
-		((struct sockaddr_in6 *)sa)->sin6_port = htons(port);
+		((struct sockaddr_in6 *)sa)->sin6_port = sgx_htons(port);
 	}
 }
 
@@ -2578,9 +2578,9 @@ static ev_uint16_t
 sockaddr_getport(struct sockaddr *sa)
 {
 	if (sa->sa_family == AF_INET) {
-		return ntohs(((struct sockaddr_in *)sa)->sin_port);
+		return sgx_ntohs(((struct sockaddr_in *)sa)->sin_port);
 	} else if (sa->sa_family == AF_INET6) {
-		return ntohs(((struct sockaddr_in6 *)sa)->sin6_port);
+		return sgx_ntohs(((struct sockaddr_in6 *)sa)->sin6_port);
 	} else {
 		return 0;
 	}
@@ -2903,7 +2903,7 @@ evdns_base_resolve_reverse(struct evdns_base *base, const struct in_addr *in, in
 	struct request *req;
 	u32 a;
 	EVUTIL_ASSERT(in);
-	a = ntohl(in->s_addr);
+	a = sgx_ntohl(in->s_addr);
 	evutil_snprintf(buf, sizeof(buf), "%d.%d.%d.%d.in-addr.arpa",
 			(int)(u8)((a	)&0xff),
 			(int)(u8)((a>>8 )&0xff),
@@ -3112,7 +3112,7 @@ search_set_from_hostname(struct evdns_base *base) {
 
 	ASSERT_LOCKED(base);
 	search_postfix_clear(base);
-	if (gethostname(hostname, sizeof(hostname))) return;
+	if (sgx_gethostname(hostname, sizeof(hostname))) return;
 	domainname = strchr(hostname, '.');
 	if (!domainname) return;
 	search_postfix_add(base, domainname);
@@ -3263,9 +3263,10 @@ evdns_resolv_set_defaults(struct evdns_base *base, int flags) {
 	if (flags & DNS_OPTION_NAMESERVERS) evdns_base_nameserver_ip_add(base,"127.0.0.1");
 }
 
+#undef _EVENT_HAVE_STRTOK_R
 #ifndef _EVENT_HAVE_STRTOK_R
 static char *
-strtok_r(char *s, const char *delim, char **state) {
+sgx_strtok_r(char *s, const char *delim, char **state) {
 	char *cp, *start;
 	start = cp = s ? s : *state;
 	if (!cp)
@@ -3472,10 +3473,10 @@ static void
 resolv_conf_parse_line(struct evdns_base *base, char *const start, int flags) {
 	char *strtok_state;
 	static const char *const delims = " \t";
-#define NEXT_TOKEN strtok_r(NULL, delims, &strtok_state)
+#define NEXT_TOKEN sgx_strtok_r(NULL, delims, &strtok_state)
 
 
-	char *const first_token = strtok_r(start, delims, &strtok_state);
+	char *const first_token = sgx_strtok_r(start, delims, &strtok_state);
 	ASSERT_LOCKED(base);
 	if (!first_token) return;
 
@@ -3539,7 +3540,7 @@ evdns_get_default_hosts_filename(void)
 	char *path_out;
 	size_t len_out;
 
-	if (! SHGetSpecialFolderPathA(NULL, path, CSIDL_SYSTEM, 0))
+	if (! sgx_SHGetSpecialFolderPathA(NULL, path, CSIDL_SYSTEM, 0))
 		return NULL;
 	len_out = strlen(path)+strlen(hostfile);
 	path_out = mm_malloc(len_out+1);
@@ -3636,8 +3637,6 @@ evdns_nameserver_ip_add_line(struct evdns_base *base, const char *ips) {
 	return 0;
 }
 
-typedef DWORD(WINAPI *GetNetworkParams_fn_t)(FIXED_INFO *, DWORD*);
-
 /* Use the windows GetNetworkParams interface in iphlpapi.dll to */
 /* figure out what our nameservers are. */
 static int
@@ -3645,30 +3644,17 @@ load_nameservers_with_getnetworkparams(struct evdns_base *base)
 {
 	/* Based on MSDN examples and inspection of  c-ares code. */
 	FIXED_INFO *fixed;
-	HMODULE handle = 0;
 	ULONG size = sizeof(FIXED_INFO);
 	void *buf = NULL;
 	int status = 0, r, added_any;
-	IP_ADDR_STRING *ns;
-	GetNetworkParams_fn_t fn;
+	IP_ADDR_STRING *ns, *prev;
 
 	ASSERT_LOCKED(base);
-	if (!(handle = evutil_load_windows_system_library(
-			TEXT("iphlpapi.dll")))) {
-		log(EVDNS_LOG_WARN, "Could not open iphlpapi.dll");
-		status = -1;
-		goto done;
-	}
-	if (!(fn = (GetNetworkParams_fn_t) GetProcAddress(handle, "GetNetworkParams"))) {
-		log(EVDNS_LOG_WARN, "Could not get address of function.");
-		status = -1;
-		goto done;
-	}
 
 	buf = mm_malloc(size);
 	if (!buf) { status = 4; goto done; }
 	fixed = buf;
-	r = fn(fixed, &size);
+	r = sgx_GetNetworkParams(fixed, &size);
 	if (r != ERROR_SUCCESS && r != ERROR_BUFFER_OVERFLOW) {
 		status = -1;
 		goto done;
@@ -3678,9 +3664,9 @@ load_nameservers_with_getnetworkparams(struct evdns_base *base)
 		buf = mm_malloc(size);
 		if (!buf) { status = 4; goto done; }
 		fixed = buf;
-		r = fn(fixed, &size);
+		r = sgx_GetNetworkParams(fixed, &size);
 		if (r != ERROR_SUCCESS) {
-			log(EVDNS_LOG_DEBUG, "fn() failed.");
+			log(EVDNS_LOG_DEBUG, "sgx_GetNetworkParams() failed.");
 			status = -1;
 			goto done;
 		}
@@ -3693,14 +3679,18 @@ load_nameservers_with_getnetworkparams(struct evdns_base *base)
 		r = evdns_nameserver_ip_add_line(base, ns->IpAddress.String);
 		if (r) {
 			log(EVDNS_LOG_DEBUG,"Could not add nameserver %s to list,error: %d",
-				(ns->IpAddress.String),(int)GetLastError());
+				(ns->IpAddress.String),(int)sgx_GetLastError());
 			status = r;
 		} else {
 			++added_any;
 			log(EVDNS_LOG_DEBUG,"Successfully added %s as nameserver",ns->IpAddress.String);
 		}
-
+		prev = ns;
 		ns = ns->Next;
+		if(prev != &(fixed->DnsServerList)) {
+			free(prev);
+			prev = NULL;
+		}
 	}
 
 	if (!added_any) {
@@ -3714,32 +3704,35 @@ load_nameservers_with_getnetworkparams(struct evdns_base *base)
  done:
 	if (buf)
 		mm_free(buf);
-	if (handle)
-		FreeLibrary(handle);
 	return status;
 }
 
 static int
 config_nameserver_from_reg_key(struct evdns_base *base, HKEY key, const TCHAR *subkey)
 {
+// SGX: We only use getnetworkparams to load nameservers!
+	printf("SGX: load_nameservers_from_registry: We only use getnetworkparams to load nameservers!\n");
+	return -1;
+/*
 	char *buf;
 	DWORD bufsz = 0, type = 0;
 	int status = 0;
 
 	ASSERT_LOCKED(base);
-	if (RegQueryValueEx(key, subkey, 0, &type, NULL, &bufsz)
+	if (sgx_RegQueryValueEx(key, subkey, 0, &type, NULL, &bufsz)
 	    != ERROR_MORE_DATA)
 		return -1;
 	if (!(buf = mm_malloc(bufsz)))
 		return -1;
 
-	if (RegQueryValueEx(key, subkey, 0, &type, (LPBYTE)buf, &bufsz)
+	if (sgx_RegQueryValueEx(key, subkey, 0, &type, (LPBYTE)buf, &bufsz)
 	    == ERROR_SUCCESS && bufsz > 1) {
 		status = evdns_nameserver_ip_add_line(base,buf);
 	}
 
 	mm_free(buf);
 	return status;
+*/
 }
 
 #define SERVICES_KEY TEXT("System\\CurrentControlSet\\Services\\")
@@ -3749,6 +3742,10 @@ config_nameserver_from_reg_key(struct evdns_base *base, HKEY key, const TCHAR *s
 static int
 load_nameservers_from_registry(struct evdns_base *base)
 {
+// SGX: We only use getnetworkparams to load nameservers!
+	printf("SGX: load_nameservers_from_registry: We only use getnetworkparams to load nameservers!\n");
+	return -1;
+/*
 	int found = 0;
 	int r;
 #define TRY(k, name) \
@@ -3762,36 +3759,36 @@ load_nameservers_from_registry(struct evdns_base *base)
 
 	ASSERT_LOCKED(base);
 
-	if (((int)GetVersion()) > 0) { /* NT */
+	if (((int)sgx_GetVersion()) > 0) { /* NT */
 		HKEY nt_key = 0, interfaces_key = 0;
 
-		if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, WIN_NS_NT_KEY, 0,
+		if (sgx_RegOpenKeyEx(HKEY_LOCAL_MACHINE, WIN_NS_NT_KEY, 0,
 				 KEY_READ, &nt_key) != ERROR_SUCCESS) {
-			log(EVDNS_LOG_DEBUG,"Couldn't open nt key, %d",(int)GetLastError());
+			log(EVDNS_LOG_DEBUG,"Couldn't open nt key, %d",(int)sgx_GetLastError());
 			return -1;
 		}
-		r = RegOpenKeyEx(nt_key, TEXT("Interfaces"), 0,
+		r = sgx_RegOpenKeyEx(nt_key, TEXT("Interfaces"), 0,
 			     KEY_QUERY_VALUE|KEY_ENUMERATE_SUB_KEYS,
 			     &interfaces_key);
 		if (r != ERROR_SUCCESS) {
-			log(EVDNS_LOG_DEBUG,"Couldn't open interfaces key, %d",(int)GetLastError());
+			log(EVDNS_LOG_DEBUG,"Couldn't open interfaces key, %d",(int)sgx_GetLastError());
 			return -1;
 		}
 		TRY(nt_key, "NameServer");
 		TRY(nt_key, "DhcpNameServer");
 		TRY(interfaces_key, "NameServer");
 		TRY(interfaces_key, "DhcpNameServer");
-		RegCloseKey(interfaces_key);
-		RegCloseKey(nt_key);
+		sgx_RegCloseKey(interfaces_key);
+		sgx_RegCloseKey(nt_key);
 	} else {
 		HKEY win_key = 0;
-		if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, WIN_NS_9X_KEY, 0,
+		if (sgx_RegOpenKeyEx(HKEY_LOCAL_MACHINE, WIN_NS_9X_KEY, 0,
 				 KEY_READ, &win_key) != ERROR_SUCCESS) {
-			log(EVDNS_LOG_DEBUG, "Couldn't open registry key, %d", (int)GetLastError());
+			log(EVDNS_LOG_DEBUG, "Couldn't open registry key, %d", (int)sgx_GetLastError());
 			return -1;
 		}
 		TRY(win_key, "NameServer");
-		RegCloseKey(win_key);
+		sgx_RegCloseKey(win_key);
 	}
 
 	if (found == 0) {
@@ -3800,6 +3797,7 @@ load_nameservers_from_registry(struct evdns_base *base)
 
 	return found ? 0 : -1;
 #undef TRY
+*/
 }
 
 int
@@ -4037,13 +4035,13 @@ evdns_base_parse_hosts_line(struct evdns_base *base, char *line)
 {
 	char *strtok_state;
 	static const char *const delims = " \t";
-	char *const addr = strtok_r(line, delims, &strtok_state);
+	char *const addr = sgx_strtok_r(line, delims, &strtok_state);
 	char *hostname, *hash;
 	struct sockaddr_storage ss;
 	int socklen = sizeof(ss);
 	ASSERT_LOCKED(base);
 
-#define NEXT_TOKEN strtok_r(NULL, delims, &strtok_state)
+#define NEXT_TOKEN sgx_strtok_r(NULL, delims, &strtok_state)
 
 	if (!addr || *addr == '#')
 		return 0;
@@ -4409,7 +4407,7 @@ evdns_getaddrinfo_gotresolve(int result, char type, int count,
 	if (type == DNS_IPv4_A) {
 		memset(&sin, 0, sizeof(sin));
 		sin.sin_family = AF_INET;
-		sin.sin_port = htons(data->port);
+		sin.sin_port = sgx_htons(data->port);
 
 		sa = (struct sockaddr *)&sin;
 		socklen = sizeof(sin);
@@ -4418,7 +4416,7 @@ evdns_getaddrinfo_gotresolve(int result, char type, int count,
 	} else {
 		memset(&sin6, 0, sizeof(sin6));
 		sin6.sin6_family = AF_INET6;
-		sin6.sin6_port = htons(data->port);
+		sin6.sin6_port = sgx_htons(data->port);
 
 		sa = (struct sockaddr *)&sin6;
 		socklen = sizeof(sin6);

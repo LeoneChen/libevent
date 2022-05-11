@@ -9,7 +9,7 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
+#include <sgx_errno.h>
 
 #ifdef WIN32
 #include <winsock2.h>
@@ -107,8 +107,7 @@ eventcb(struct bufferevent *bev, short what, void *ctx)
 				    ERR_lib_error_string(err);
 				const char *func = (const char*)
 				    ERR_func_error_string(err);
-				fprintf(stderr,
-				    "%s in %s %s\n", msg, lib, func);
+				printf("%s in %s %s\n", msg, lib, func);
 			}
 			if (errno)
 				perror("connection error");
@@ -145,7 +144,7 @@ syntax(void)
 	fputs("Example:\n", stderr);
 	fputs("   le-proxy 127.0.0.1:8888 1.2.3.4:80\n", stderr);
 
-	exit(1);
+	sgx_exit(1);
 }
 
 static void
@@ -233,8 +232,8 @@ main(int argc, char **argv)
 		struct sockaddr_in *sin = (struct sockaddr_in*)&listen_on_addr;
 		if (p < 1 || p > 65535)
 			syntax();
-		sin->sin_port = htons(p);
-		sin->sin_addr.s_addr = htonl(0x7f000001);
+		sin->sin_port = sgx_htons(p);
+		sin->sin_addr.s_addr = sgx_htonl(0x7f000001);
 		sin->sin_family = AF_INET;
 		socklen = sizeof(struct sockaddr_in);
 	}
@@ -259,7 +258,7 @@ main(int argc, char **argv)
 		OpenSSL_add_all_algorithms();
 		r = RAND_poll();
 		if (r == 0) {
-			fprintf(stderr, "RAND_poll() failed.\n");
+			printf("RAND_poll() failed.\n");
 			return 1;
 		}
 		ssl_ctx = SSL_CTX_new(SSLv23_method());

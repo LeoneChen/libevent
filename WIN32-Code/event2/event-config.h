@@ -360,4 +360,94 @@
 /* Define to `int' if <sys/types.h> does not define. */
 #define _EVENT_ssize_t SSIZE_T
 
+
+// SGX
+extern char *_strdup(const char* s);
+extern int sscanf(const char *str, const char *format, ...);
+extern int sgx_close(int fd);
+extern int sgx_recv(int s, char *buf, int len, int flags);
+extern int sgx_send(int s, char *buf, int len, int flags);
+extern int * _errno(void);
+
+extern unsigned sgx_GetSystemDirectory(char *lpBuffer, unsigned int uSize);
+extern long sgx_rand(void);
+extern void sgx_Sleep(unsigned long ms);
+extern int sgx_select(int nfds, void *rfd, void *wfd,  void *efd, int fd_size, struct timeval *timeout);
+
+struct sockaddr;
+extern int sgx_accept(int s, struct sockaddr *addr, int *addrlen);
+extern int sgx_bind(int s, struct sockaddr *addr, int addrlen);
+extern int sgx_closesocket(int s);
+extern int sgx_listen(int s, int backlog);
+extern int sgx_connect(int s, struct sockaddr *addr, int addrlen);
+extern int sgx_ioctlsocket(int s, long cmd, unsigned long *argp);
+extern int sgx_getsockname(int s,  struct sockaddr *name, int *namelen);
+extern int sgx_getsockopt(int s, int level, int optname, char *optval, int* optlen);
+extern int sgx_socket(int af, int type, int protocol);
+extern unsigned long sgx_GetNetworkParams(void *fixed, unsigned long *fixed_size);
+
+extern void sgx_getservbyname(const char *name, int name_len, const char *proto, int proto_len,
+								void *serv_ptr, int serv_len);
+extern void sgx_getprotobynumber(int number, void *proto, int proto_len, char *proto_name, int proto_name_len);
+
+typedef char * __va_list;
+typedef __va_list   va_list;
+extern int sgx_vsnprintf(char *s1, size_t n, const char *s2, va_list v);
+
+extern void sgx_exit(int e);
+
+extern void (*sgx_signal(int signum, void(*_Func)(int)))(int);
+
+extern unsigned int sgx_getpid(void);
+extern int sgx_CloseHandle(int hObject);
+extern int sgx_CreateIoCompletionPort(int FileHandle, int p, unsigned long k, unsigned long numthreads);
+extern int sgx_GetQueuedCompletionStatus(int p, unsigned long *numbytes, __int64 *k, void *lpOverlapped, int lpOverlapped_len, unsigned long dwMilliseconds);
+extern int sgx_ReleaseSemaphore(int hSemaphore, long lReleaseCount, long* lpPreviousCount, int lp_len);
+extern void sgx_WSASetLastError(int errcode);
+extern int sgx_GetLastError(void);
+extern int sgx_GetVersion(void);
+extern int sgx_WSAGetLastError(void);
+
+extern unsigned short sgx_htons(unsigned short hostshort);
+extern unsigned long sgx_htonl(unsigned long hostlong);
+
+extern unsigned short sgx_ntohs(unsigned short netshort);
+extern unsigned long sgx_ntohl(unsigned long netlong);
+
+struct _timeb;
+extern void sgx_ftime(struct _timeb *tb, int sizetb);
+
+extern int sgx_fstat(int fd, void *buf, int buflen);
+
+extern int sgx_open(const char *pathname, int path_len, int flags, unsigned mode);
+
+extern int sgx_read(int fd, const void *buf, int n);
+
+extern int sgx_PostQueuedCompletionStatus(int port, unsigned int n, unsigned int key, void *o, int o_len);
+
+extern int sgx_CryptAcquireContext(void *prov, void *container, void *provider, unsigned long provtype, unsigned long dwflags);
+extern int sgx_CryptGenRandom(unsigned long long prov, int buf_len, unsigned char *buf);
+extern void sgx_InitializeCriticalSectionAndSpinCount(void *lock, int lock_len, int count);
+extern struct hostent *sgx_gethostbyname(const char *name);
+
+extern void sgx_EnterCriticalSection(void *lock, int lock_len);
+extern void sgx_LeaveCriticalSection(void *lock, int lock_len);
+extern void sgx_DeleteCriticalSection(void *lock, int lock_len);
+
+extern void sgx_WaitForSingleObject(int handle, unsigned long ms_);
+
+extern int sgx_CreateSemaphore(void *attr, int attr_len, long initcount, long maxcount, void *name, int name_len);
+
+extern int sgx_WSAIoctl(int s, unsigned long dwIoControlCode,
+	void* lpvInBuffer, unsigned long cbInBuffer, void* lpvOutBuffer,
+	unsigned long cbOutBuffer, unsigned long *lpcbBytesReturned,
+	void *lpOverlapped, void *LPWSAOVERLAPPED_COMPLETION_ROUTINE);
+
+extern unsigned long long sgx_beginthread(void (*fn)(void *), int num, void *port, int port_len);
+
+extern int sgx_gethostname(char *name, size_t namelen);
+extern int sgx_socket(int af, int type, int protocol);
+extern int sgx_sendto(int s, const void *msg, size_t len, int flags, const struct sockaddr *to, int tolen);
+extern int sgx_recvfrom(int s, void *msg, size_t len, int flags, struct sockaddr *fr, int *frlen);
+
 #endif

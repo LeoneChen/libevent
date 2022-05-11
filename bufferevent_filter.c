@@ -34,7 +34,7 @@
 #include <sys/time.h>
 #endif
 
-#include <errno.h>
+#include <sgx_errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -48,7 +48,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <errno.h>
+#include <sgx_errno.h>
 #include <assert.h>
 
 #include "event2/event.h"

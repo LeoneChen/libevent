@@ -42,7 +42,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #endif
-#include <errno.h>
+#include <sgx_errno.h>
 
 #include "event2/event.h"
 #include "event2/util.h"
@@ -57,7 +57,7 @@ read_cb(evutil_socket_t fd, short event, void *arg)
 	char buf;
 	int len;
 
-	len = recv(fd, &buf, sizeof(buf), 0);
+	len = sgx_recv(fd, &buf, sizeof(buf), 0);
 
 	called++;
 	if (event & EV_ET)
@@ -104,7 +104,7 @@ test_edgetriggered(void *et)
 
 	called = was_et = 0;
 
-	tt_int_op(send(pair[0], test, (int)strlen(test)+1, 0), >, 0);
+	tt_int_op(sgx_send(pair[0], test, (int)strlen(test)+1, 0), >, 0);
 	shutdown(pair[0], SHUT_WR);
 
 	/* Initalize the event library */

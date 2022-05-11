@@ -44,7 +44,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <signal.h>
-#include <errno.h>
+#include <sgx_errno.h>
 
 #include "event2/event.h"
 #include "event2/event_struct.h"
@@ -65,7 +65,7 @@ write_cb(evutil_socket_t fd, short event, void *arg)
 	const char *test = "test string";
 	int len;
 
-	len = send(fd, test, (int)strlen(test) + 1, 0);
+	len = sgx_send(fd, test, (int)strlen(test) + 1, 0);
 
 	printf("%s: write %d%s\n", __func__,
 	    len, len ? "" : " - means EOF");
@@ -95,7 +95,7 @@ main(int argc, char **argv)
 #endif
 
 #ifndef WIN32
-	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
+	if (sgx_signal(SIGPIPE, SIG_IGN) == SIG_ERR)
 		return (1);
 #endif
 

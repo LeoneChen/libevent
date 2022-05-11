@@ -54,7 +54,7 @@
 #endif
 #include <sys/queue.h>
 #include <signal.h>
-#include <errno.h>
+#include <sgx_errno.h>
 #endif
 
 #include <sys/types.h>
@@ -202,10 +202,10 @@ basic_test_setup(const struct testcase_t *testcase)
 			return NULL;
 #if defined(EVTHREAD_USE_PTHREADS_IMPLEMENTED)
 		if (evthread_use_pthreads())
-			exit(1);
+			sgx_exit(1);
 #elif defined(EVTHREAD_USE_WINDOWS_THREADS_IMPLEMENTED)
 		if (evthread_use_windows_threads())
-			exit(1);
+			sgx_exit(1);
 #else
 		return (void*)TT_SKIP;
 #endif
@@ -213,18 +213,18 @@ basic_test_setup(const struct testcase_t *testcase)
 
 	if (testcase->flags & TT_NEED_SOCKETPAIR) {
 		if (evutil_socketpair(AF_UNIX, SOCK_STREAM, 0, spair) == -1) {
-			fprintf(stderr, "%s: socketpair\n", __func__);
-			exit(1);
+			printf("%s: socketpair\n", __func__);
+			sgx_exit(1);
 		}
 
 		if (evutil_make_socket_nonblocking(spair[0]) == -1) {
-			fprintf(stderr, "fcntl(O_NONBLOCK)");
-			exit(1);
+			printf("fcntl(O_NONBLOCK)");
+			sgx_exit(1);
 		}
 
 		if (evutil_make_socket_nonblocking(spair[1]) == -1) {
-			fprintf(stderr, "fcntl(O_NONBLOCK)");
-			exit(1);
+			printf("fcntl(O_NONBLOCK)");
+			sgx_exit(1);
 		}
 	}
 	if (testcase->flags & TT_NEED_BASE) {
@@ -233,7 +233,7 @@ basic_test_setup(const struct testcase_t *testcase)
 		else
 			base = event_base_new();
 		if (!base)
-			exit(1);
+			sgx_exit(1);
 	}
 	if (testcase->flags & TT_ENABLE_IOCP_FLAG) {
 		if (event_base_start_iocp(base, 0)<0) {
@@ -253,7 +253,7 @@ basic_test_setup(const struct testcase_t *testcase)
 
 	data = calloc(1, sizeof(*data));
 	if (!data)
-		exit(1);
+		sgx_exit(1);
 	data->base = base;
 	data->pair[0] = spair[0];
 	data->pair[1] = spair[1];
@@ -399,7 +399,7 @@ main(int argc, const char **argv)
 #endif
 
 #ifndef WIN32
-	if (signal(SIGPIPE, SIG_IGN) == SIG_ERR)
+	if (sgx_signal(SIGPIPE, SIG_IGN) == SIG_ERR)
 		return 1;
 #endif
 

@@ -42,4 +42,5 @@
 #include <event2/dns_compat.h>
 #include <event2/dns_struct.h>
 
+extern int sgx_SHGetSpecialFolderPathA(HWND hwnd, char *path, int csidl, int fCreate);
 #endif /* _EVDNS_H_ */

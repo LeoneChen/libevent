@@ -73,17 +73,17 @@ loop(void *_port)
 		OVERLAPPED *overlapped=NULL;
 		ULONG_PTR key=0;
 		DWORD bytes=0;
-		int ok = GetQueuedCompletionStatus(p, &bytes, &key,
-			&overlapped, ms);
-		EnterCriticalSection(&port->lock);
+		int ok = sgx_GetQueuedCompletionStatus(p, &bytes, &key,
+			&overlapped, sizeof(OVERLAPPED), ms);
+		sgx_EnterCriticalSection(&port->lock, sizeof(CRITICAL_SECTION));
 		if (port->shutdown) {
 			if (--port->n_live_threads == 0)
-				ReleaseSemaphore(port->shutdownSemaphore, 1,
-						NULL);
-			LeaveCriticalSection(&port->lock);
+				sgx_ReleaseSemaphore(port->shutdownSemaphore, 1,
+						NULL, 0);
+			sgx_LeaveCriticalSection(&port->lock, sizeof(CRITICAL_SECTION));
 			return;
 		}
-		LeaveCriticalSection(&port->lock);
+		sgx_LeaveCriticalSection(&port->lock, sizeof(CRITICAL_SECTION));
 
 		if (key != NOTIFICATION_KEY && overlapped)
 			handle_entry(overlapped, key, bytes, ok);
@@ -91,10 +91,10 @@ loop(void *_port)
 			break;
 	}
 	event_warnx("GetQueuedCompletionStatus exited with no event.");
-	EnterCriticalSection(&port->lock);
+	sgx_EnterCriticalSection(&port->lock, sizeof(CRITICAL_SECTION));
 	if (--port->n_live_threads == 0)
-		ReleaseSemaphore(port->shutdownSemaphore, 1, NULL);
-	LeaveCriticalSection(&port->lock);
+		sgx_ReleaseSemaphore(port->shutdownSemaphore, 1, NULL, 0);
+	sgx_LeaveCriticalSection(&port->lock, sizeof(CRITICAL_SECTION));	
 }
 
 int
@@ -102,7 +102,7 @@ event_iocp_port_associate(struct event_iocp_port *port, evutil_socket_t fd,
     ev_uintptr_t key)
 {
 	HANDLE h;
-	h = CreateIoCompletionPort((HANDLE)fd, port->port, key, port->n_threads);
+	h = sgx_CreateIoCompletionPort((HANDLE)fd, port->port, key, port->n_threads);
 	if (!h)
 		return -1;
 	return 0;
@@ -113,7 +113,7 @@ get_extension_function(SOCKET s, const GUID *which_fn)
 {
 	void *ptr = NULL;
 	DWORD bytes=0;
-	WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER,
+	sgx_WSAIoctl(s, SIO_GET_EXTENSION_FUNCTION_POINTER,
 	    (GUID*)which_fn, sizeof(*which_fn),
 	    &ptr, sizeof(ptr),
 	    &bytes, NULL, NULL);
@@ -149,14 +149,14 @@ init_extension_functions(struct win32_extension_fns *ext)
 	const GUID acceptex = WSAID_ACCEPTEX;
 	const GUID connectex = WSAID_CONNECTEX;
 	const GUID getacceptexsockaddrs = WSAID_GETACCEPTEXSOCKADDRS;
-	SOCKET s = socket(AF_INET, SOCK_STREAM, 0);
+	SOCKET s = sgx_socket(AF_INET, SOCK_STREAM, 0);
 	if (s == INVALID_SOCKET)
 		return;
 	ext->AcceptEx = get_extension_function(s, &acceptex);
 	ext->ConnectEx = get_extension_function(s, &connectex);
 	ext->GetAcceptExSockaddrs = get_extension_function(s,
 	    &getacceptexsockaddrs);
-	closesocket(s);
+	sgx_closesocket(s);
 
 	extension_fns_initialized = 1;
 }
@@ -190,34 +190,34 @@ event_iocp_port_launch(int n_cpus)
 	if (!port->threads)
 		goto err;
 
-	port->port = CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0,
+	port->port = sgx_CreateIoCompletionPort(INVALID_HANDLE_VALUE, NULL, 0,
 			n_cpus);
 	port->ms = -1;
 	if (!port->port)
 		goto err;
 
-	port->shutdownSemaphore = CreateSemaphore(NULL, 0, 1, NULL);
+	port->shutdownSemaphore = sgx_CreateSemaphore(NULL, 0, 0, 1, NULL, 0);
 	if (!port->shutdownSemaphore)
 		goto err;
 
 	for (i=0; i<port->n_threads; ++i) {
-		ev_uintptr_t th = _beginthread(loop, 0, port);
+		ev_uintptr_t th = sgx_beginthread(loop, 0, port, sizeof(struct event_iocp_port));
 		if (th == (ev_uintptr_t)-1)
 			goto err;
 		port->threads[i] = (HANDLE)th;
 		++port->n_live_threads;
 	}
 
-	InitializeCriticalSectionAndSpinCount(&port->lock, 1000);
+	sgx_InitializeCriticalSectionAndSpinCount(&port->lock, sizeof(CRITICAL_SECTION), 1000);
 
 	return port;
 err:
 	if (port->port)
-		CloseHandle(port->port);
+		sgx_CloseHandle(port->port);
 	if (port->threads)
 		mm_free(port->threads);
 	if (port->shutdownSemaphore)
-		CloseHandle(port->shutdownSemaphore);
+		sgx_CloseHandle(port->shutdownSemaphore);
 	mm_free(port);
 	return NULL;
 }
@@ -225,9 +225,9 @@ err:
 static void
 _event_iocp_port_unlock_and_free(struct event_iocp_port *port)
 {
-	DeleteCriticalSection(&port->lock);
-	CloseHandle(port->port);
-	CloseHandle(port->shutdownSemaphore);
+	sgx_DeleteCriticalSection(&port->lock, sizeof(CRITICAL_SECTION));
+	sgx_CloseHandle(port->port);
+	sgx_CloseHandle(port->shutdownSemaphore);
 	mm_free(port->threads);
 	mm_free(port);
 }
@@ -237,8 +237,8 @@ event_iocp_notify_all(struct event_iocp_port *port)
 {
 	int i, r, ok=1;
 	for (i=0; i<port->n_threads; ++i) {
-		r = PostQueuedCompletionStatus(port->port, 0, NOTIFICATION_KEY,
-		    NULL);
+		r = sgx_PostQueuedCompletionStatus(port->port, 0, NOTIFICATION_KEY,
+		    NULL, 0);
 		if (!r)
 			ok = 0;
 	}
@@ -251,18 +251,18 @@ event_iocp_shutdown(struct event_iocp_port *port, long waitMsec)
 	DWORD ms = INFINITE;
 	int n;
 
-	EnterCriticalSection(&port->lock);
+	sgx_EnterCriticalSection(&port->lock, sizeof(CRITICAL_SECTION));
 	port->shutdown = 1;
-	LeaveCriticalSection(&port->lock);
+	sgx_LeaveCriticalSection(&port->lock, sizeof(CRITICAL_SECTION));
 	event_iocp_notify_all(port);
 
 	if (waitMsec >= 0)
 		ms = waitMsec;
 
-	WaitForSingleObject(port->shutdownSemaphore, ms);
-	EnterCriticalSection(&port->lock);
+	sgx_WaitForSingleObject(port->shutdownSemaphore, ms);
+	sgx_EnterCriticalSection(&port->lock, sizeof(CRITICAL_SECTION));
 	n = port->n_live_threads;
-	LeaveCriticalSection(&port->lock);
+	sgx_LeaveCriticalSection(&port->lock, sizeof(CRITICAL_SECTION));
 	if (n == 0) {
 		_event_iocp_port_unlock_and_free(port);
 		return 0;
@@ -278,7 +278,7 @@ event_iocp_activate_overlapped(
 {
 	BOOL r;
 
-	r = PostQueuedCompletionStatus(port->port, n, key, &o->overlapped);
+	r = sgx_PostQueuedCompletionStatus(port->port, n, key, &o->overlapped, sizeof(OVERLAPPED));
 	return (r==0) ? -1 : 0;
 }
 

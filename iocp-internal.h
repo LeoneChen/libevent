@@ -74,7 +74,7 @@ struct win32_extension_fns {
  */
 struct event_iocp_port {
 	/** The port itself */
-	HANDLE port;
+    int port;
 	/* A lock to cover internal structures. */
 	CRITICAL_SECTION lock;
 	/** Number of threads ever open on the port. */
@@ -89,7 +89,7 @@ struct event_iocp_port {
 	/** Number of threads currently open on this port. */
 	short n_live_threads;
 	/** A semaphore to signal when we are done shutting down. */
-	HANDLE *shutdownSemaphore;
+    int shutdownSemaphore;
 };
 
 const struct win32_extension_fns *event_get_win32_extension_fns(void);

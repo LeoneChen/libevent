@@ -140,7 +140,7 @@ evsig_cb(evutil_socket_t fd, short what, void *arg)
 	memset(&ncaught, 0, sizeof(ncaught));
 
 	while (1) {
-		n = recv(fd, signals, sizeof(signals), 0);
+		n = sgx_recv(fd, signals, sizeof(signals), 0);
 		if (n == -1) {
 			int err = evutil_socket_geterror(fd);
 			if (! EVUTIL_ERR_RW_RETRIABLE(err))
@@ -251,16 +251,16 @@ _evsig_set_handler(struct event_base *base,
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = handler;
 	sa.sa_flags |= SA_RESTART;
-	sigfillset(&sa.sa_mask);
+	sgx_sigfillset(&sa.sa_mask);
 
-	if (sigaction(evsignal, &sa, sig->sh_old[evsignal]) == -1) {
+	if (sgx_sigaction(evsignal, &sa, sig->sh_old[evsignal]) == -1) {
 		event_warn("sigaction");
 		mm_free(sig->sh_old[evsignal]);
 		sig->sh_old[evsignal] = NULL;
 		return (-1);
 	}
 #else
-	if ((sh = signal(evsignal, handler)) == SIG_ERR) {
+	if ((sh = sgx_signal(evsignal, handler)) == SIG_ERR) {
 		event_warn("signal");
 		mm_free(sig->sh_old[evsignal]);
 		sig->sh_old[evsignal] = NULL;
@@ -333,12 +333,12 @@ _evsig_restore_handler(struct event_base *base, int evsignal)
 	sh = sig->sh_old[evsignal];
 	sig->sh_old[evsignal] = NULL;
 #ifdef _EVENT_HAVE_SIGACTION
-	if (sigaction(evsignal, sh, NULL) == -1) {
+	if (sgx_sigaction(evsignal, sh, NULL) == -1) {
 		event_warn("sigaction");
 		ret = -1;
 	}
 #else
-	if (signal(evsignal, *sh) == SIG_ERR) {
+	if (sgx_signal(evsignal, *sh) == SIG_ERR) {
 		event_warn("signal");
 		ret = -1;
 	}
@@ -382,12 +382,12 @@ evsig_handler(int sig)
 	}
 
 #ifndef _EVENT_HAVE_SIGACTION
-	signal(sig, evsig_handler);
+	sgx_signal(sig, evsig_handler);
 #endif
 
 	/* Wake up our notification mechanism */
 	msg = sig;
-	send(evsig_base_fd, (char*)&msg, 1, 0);
+	sgx_send(evsig_base_fd, (char*)&msg, 1, 0);
 	errno = save_errno;
 #ifdef WIN32
 	EVUTIL_SET_SOCKET_ERROR(socket_errno);

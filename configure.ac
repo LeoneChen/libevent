@@ -7,11 +7,11 @@ dnl
 dnl Original version Dug Song <dugsong@monkey.org>
 
 AC_PREREQ(2.59)
-AC_INIT(event.c)
+AC_INIT([libevent], [2.0.22-stable])
 
 AC_CONFIG_MACRO_DIR([m4])
-
-AM_INIT_AUTOMAKE(libevent,2.0.22-stable)
+AC_CONFIG_SRCDIR([event.c])
+AM_INIT_AUTOMAKE
 AC_CONFIG_HEADERS(config.h)
 AC_DEFINE(NUMERIC_VERSION, 0x02001600, [Numeric representation of the version])
 
@@ -190,7 +190,7 @@ fi
 
 dnl Checks for header files.
 AC_HEADER_STDC
-AC_CHECK_HEADERS([fcntl.h stdarg.h inttypes.h stdint.h stddef.h poll.h unistd.h sys/epoll.h sys/time.h sys/queue.h sys/event.h sys/param.h sys/ioctl.h sys/select.h sys/devpoll.h port.h netinet/in.h netinet/in6.h sys/socket.h sys/uio.h arpa/inet.h sys/eventfd.h sys/mman.h sys/sendfile.h sys/wait.h netdb.h])
+AC_CHECK_HEADERS([fcntl.h stdarg.h inttypes.h stdint.h stddef.h poll.h unistd.h sys/epoll.h sys/queue.h sys/event.h sys/param.h sys/ioctl.h sys/select.h sys/devpoll.h port.h netinet/in.h netinet/in6.h sys/socket.h sys/uio.h arpa/inet.h sys/eventfd.h sys/mman.h sys/sendfile.h sys/wait.h netdb.h])
 AC_CHECK_HEADERS([sys/stat.h])
 AC_CHECK_HEADERS(sys/sysctl.h, [], [], [
 #ifdef HAVE_SYS_PARAM_H
@@ -436,15 +436,15 @@ main(int argc, char **argv)
 	char buf[[8000]];
 
 	if (pipe(fd) == -1)
-		exit(1);
+		sgx_exit(1);
 	if (fcntl(fd[[1]], F_SETFL, O_NONBLOCK) == -1)
-		exit(1);
+		sgx_exit(1);
 
 	while ((n = write(fd[[1]], buf, sizeof(buf))) == sizeof(buf))
 		;
 
         if ((kq = kqueue()) == -1)
-		exit(1);
+		sgx_exit(1);
 
 	memset(&ev, 0, sizeof(ev));
 	ev.ident = fd[[1]];
@@ -452,7 +452,7 @@ main(int argc, char **argv)
 	ev.flags = EV_ADD | EV_ENABLE;
 	n = kevent(kq, &ev, 1, NULL, 0, NULL);
 	if (n == -1)
-		exit(1);
+		sgx_exit(1);
 
 	read(fd[[0]], buf, sizeof(buf));
 
@@ -460,9 +460,9 @@ main(int argc, char **argv)
 	ts.tv_nsec = 0;
 	n = kevent(kq, NULL, 0, &ev, 1, &ts);
 	if (n == -1 || n == 0)
-		exit(1);
+		sgx_exit(1);
 
-	exit(0);
+	sgx_exit(0);
 }, [AC_MSG_RESULT(yes)
     AC_DEFINE(HAVE_WORKING_KQUEUE, 1,
 		[Define if kqueue works correctly with pipes])
@@ -560,7 +560,7 @@ AC_CHECK_SIZEOF(size_t)
 AC_CHECK_SIZEOF(void *)
 AC_CHECK_SIZEOF(off_t)
 
-AC_CHECK_TYPES([struct in6_addr, struct sockaddr_in6, sa_family_t, struct addrinfo, struct sockaddr_storage], , ,
+AC_CHECK_TYPES([struct in6_addr, struct sockaddr_in6, sa_family_t, struct sockaddr_storage], , ,
 [#define _GNU_SOURCE
 #include <sys/types.h>
 #ifdef HAVE_NETINET_IN_H
@@ -774,7 +774,7 @@ if test "$GCC" = yes && test "$enable_function_sections" = yes ; then
 
 			fpC = fopen("conftest.c", "r");
 			if (NULL == fpC)
-				exit(1);
+				sgx_exit(1);
 			do {
 				cch = fread(buf, sizeof(buf), 1, fpC);
 				read_success_once |= (0 != cch);

@@ -67,7 +67,7 @@
 #include <winsock2.h>
 #endif
 
-#include <errno.h>
+#include <sgx_errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -123,7 +123,7 @@ fake_getnameinfo(const struct sockaddr *sa, size_t salen, char *host,
 	if (serv != NULL) {
 		char tmpserv[16];
 		evutil_snprintf(tmpserv, sizeof(tmpserv),
-		    "%d", ntohs(sin->sin_port));
+		    "%d", sgx_ntohs(sin->sin_port));
 		if (strlcpy(serv, tmpserv, servlen) >= servlen)
 			return (-1);
 	}
@@ -1404,7 +1404,7 @@ evhttp_connection_cb(struct bufferevent *bufev, short what, void *arg)
 	}
 
 	/* Check if the connection completed */
-	if (getsockopt(evcon->fd, SOL_SOCKET, SO_ERROR, (void*)&error,
+	if (sgx_getsockopt(evcon->fd, SOL_SOCKET, SO_ERROR, (void*)&error,
 		       &errsz) == -1) {
 		event_debug(("%s: getsockopt for \"%s:%d\" on "EV_SOCK_FMT,
 			__func__, evcon->address, evcon->port,
@@ -3102,7 +3102,7 @@ evhttp_bind_socket_with_handle(struct evhttp *http, const char *address, ev_uint
 	if ((fd = bind_socket(address, port, 1 /*reuse*/)) == -1)
 		return (NULL);
 
-	if (listen(fd, 128) == -1) {
+	if (sgx_listen(fd, 128) == -1) {
 		event_sock_warn(fd, "%s: listen", __func__);
 		evutil_closesocket(fd);
 		return (NULL);
@@ -3826,7 +3826,7 @@ bind_socket_ai(struct evutil_addrinfo *ai, int reuse)
 	int serrno;
 
 	/* Create listen socket */
-	fd = socket(ai ? ai->ai_family : AF_INET, SOCK_STREAM, 0);
+	fd = sgx_socket(ai ? ai->ai_family : AF_INET, SOCK_STREAM, 0);
 	if (fd == -1) {
 			event_sock_warn(-1, "socket");
 			return (-1);
@@ -3845,7 +3845,7 @@ bind_socket_ai(struct evutil_addrinfo *ai, int reuse)
 	}
 
 	if (ai != NULL) {
-		r = bind(fd, ai->ai_addr, (ev_socklen_t)ai->ai_addrlen);
+		r = sgx_bind(fd, ai->ai_addr, (ev_socklen_t)ai->ai_addrlen);
 		if (r == -1)
 			goto out;
 	}
